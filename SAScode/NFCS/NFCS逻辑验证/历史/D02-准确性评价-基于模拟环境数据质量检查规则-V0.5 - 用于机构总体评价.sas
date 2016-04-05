@@ -1,35 +1,17 @@
-%include "E:/林佳宁/code/config.sas";
-/*libname nfcs "D:\数据\201602";*/
-proc sort data = nfcs.sino_loan(drop = sloantype sloancompactcode scurrency iclass5stat iinfoindicator skeepcolumn ipersonid smsgfilename ilineno stoporgcode ipbcstate WHERE=(SUBSTR(sorgcode,1,1)='Q' 
-and istate = 0 AND sorgcode not in ('Q10152900H0000','Q10152900H0001') and datepart(dgetdate) >= &firstday_three. and &firstday. > datepart(dbillingdate) >= &firstday_three.)) out = sino_loan;
-by iloanid dbillingdate descending dgetdate;
+%include "E:\新建文件夹\SAS\CONFIG.sas";
+proc sort data = nfcs.sino_loan(drop = sloantype SAREACODE dgetdate sloancompactcode scurrency iclass5stat iinfoindicator sname scerttype scertno skeepcolumn ipersonid smsgfilename ilineno stoporgcode istate ipbcstate WHERE=(SUBSTR(sorgcode,1,1)='Q' AND sorgcode not in ('Q10152900H0000','Q10152900H0001') and
+ &firstday. > datepart(dbillingdate) >= &firstday_two.)) out = sino_loan;
+by iloanid dbillingdate;
 run;
-/*%AddLabel(sino_loan);*/
-data sino_loan;
-informat zhangqi yymmn6.;
-format zhangqi yymmn6.;
- set sino_loan;
- error_flag = 0;
- doubt_flag = 0;
- zhangqi = intnx('month',datepart(dbillingdate),0,'b');
-/*label*/
-/*	&label.*/
-;
-run;
-proc sort data = sino_loan;
-	by iloanid zhangqi descending dgetdate;
-run;
-data sino_loan;
-	set sino_loan;
-	if iloanid = lag(iloanid) and zhangqi = lag(zhangqi) then delete;
-run;
+
 /*Rule 1*/
 /*1、结清时，上报"结算应还款日期"是否取结清日（不一定是问题的情况：结清日与最后一次还款不在同一天）*/
 /*怀疑*/
 data sino_loan;
  set sino_loan;
+ error_flag = 0;
+ doubt_flag = 0;
   if dbillingdate ^= drecentpaydate and iaccountstat not in (1,2) then doubt_flag = 1;
-;
 run;
 /*Rule 2*/
 /*---2、贷款逾期，帐户状态却为正常*/
@@ -62,7 +44,7 @@ run;
 /*需要更新*/
 data sino_loan;
  set sino_loan;
-if sPaystat24month = '///////////////////////*' and (dbillingdate ^= ddateopened or drecentpaydate ^= ddateopened) then error_flag = 1;
+if sPaystat24month = '///////////////////////*' and dbillingdate ^= ddateopened or drecentpaydate ^= ddateopened then error_flag = 1;
 run; 
 
 /*Rule 6*/
@@ -114,7 +96,7 @@ run;
 /*错误*/
 data sino_loan;
  set sino_loan;
-if substr(sPaystat24month, 23, 2) = 'N1' and (ischeduledamount - iactualpayamount > iamountpastdue + 1 or ischeduledamount - iactualpayamount < iamountpastdue - 1) 
+if substr(sPaystat24month, 23, 2) = 'N1' and (ischeduledamount - iactualpayamount ^= iamountpastdue + 1 and ischeduledamount - iactualpayamount ^= iamountpastdue - 1 and ischeduledamount - iactualpayamount ^= iamountpastdue) 
 then error_flag = 1;
 run;
 
@@ -123,8 +105,7 @@ run;
 /*错误*/
 data sino_loan;
  set sino_loan;
- if sPaystat24month ^= '///////////////////////*' and sTermsfreq = '03' and ischeduledamount=0 
-	and intnx('month',datepart(dbillingdate),0,'end') ^= intnx('month',datepart(ddateopened),0,'end') then error_flag = 1;
+ if sPaystat24month ^= '///////////////////////*' and sTermsfreq = '03' and ischeduledamount=0  then error_flag = 1;
 run;
 
 /*Rule 13*/
@@ -253,7 +234,7 @@ run;
 /*错误*/
 data sino_loan;
  set sino_loan;
- if substr(sPaystat24month,23,1) in ('*','#','/','N') and iaccountstat = 3 and ischeduledamount ^= iactualpayamount  and  ddateclosed = dbillingdate
+ if substr(sPaystat24month,23,1) in ('*','#','/','N') and  ischeduledamount ^= iactualpayamount  and  ddateclosed = dbillingdate
 then error_flag = 1;
 run;
 
@@ -324,7 +305,7 @@ proc sql;
 		,T1.sorgcode label = "机构代码"
 		,count(t1.iloanid) as total label = "应入库业务总量"
 		,sum(t1.jishixing_label) as in_nfcs label = "已入库业务总量"
-		,round(calculated in_nfcs/calculated total,0.0001) as in_per label = "及时率" format = percent8.2 informat = percent8.2
+		,put(round(calculated in_nfcs/calculated total,0.0001),percent8.2) as in_per label = "及时率"
 	from loan_in as t1
 	left join config as T2
 	on T1.sorgcode = T2.sorgcode
@@ -344,7 +325,7 @@ proc sql;
 /*	,sum(1,- sum(doubt_flag)/count(*)) as doubt_per label = "各机构准确率-怀疑" format = percent8.2 informat = percent8.2 */
 	,count(T1.sorgcode) as record_cnt label = "贷款业务记录条数"
 	,sum(t1.error_flag) as record_cnt_error label = "触发错误类规则记录条数"
-	,1 - calculated record_cnt_error/calculated record_cnt as error_per label = "准确率" format = percent8.2 informat = percent8.2
+	,1 - calculated record_cnt_error/calculated record_cnt as error_per label = "准确率-仅考虑类型为【错误】的规则" format = percent8.2 informat = percent8.2
 	,T2.total
 	,t2.in_nfcs
 	,T2.in_per
@@ -362,25 +343,9 @@ proc sort data = zqx_org;
 by desending record_cnt;
 run;
 
-/*ods listing off;*/
- ods tagsets.excelxp file = "&outfile.库中逻辑校验情况表_&currmonth..xls" style = printer
-      options(sheet_name="库中逻辑校验情况表" embedded_titles='yes' embedded_footnotes='yes' sheet_interval="bygroup" frozen_headers='yes' frozen_rowheaders='1' autofit_height='yes');
-proc report data = zqx_org NOWINDOWS headline headskip
-          style(header)={background=lightgray foreground=black font_weight=bold};
-title "库中逻辑校验情况表";
-	columns _all_;
-	define person /display '专管员';
-	define shortname/ display width=5;
-	define record_cnt_error/ display '触发错误类规则/记录条数';
-	define in_per/display center;
-	define error_per/display center;
-	compute after;
- 	if in_per >= 0.9 and error_per >= 0.99 then 
- 		call define(_row_,'style','style={background=lightyellow fontweight=bold}');
- 	endcomp;
-footnote '【准确率】仅考虑类型为【错误】的规则';
+libname xls excel "&outfile.库中逻辑校验情况表.xlsx";
+data xls.'库中逻辑校验情况表'n(dblabel = yes);
+set zqx_org;
 run;
-ods tagsets.excelxp close;
-  ods listing;
-
+libname xls clear;
 

@@ -1974,14 +1974,12 @@ run;
 %end;
 
 data &TargetTable;
-set
-%if &GMN_FlagNumVarExists GT 0 %then %do
-GMN_NumMiss
+%if &GMN_FlagNumVarExists GT 0 %then %do;
+set GMN_NumMiss;
 %end;
-%if &GMN_FlagCharVarExists GT 0 %then %do
-GMN_CharMiss
+%if &GMN_FlagCharVarExists GT 0 %then %do;
+set GMN_CharMiss;
 %end;
-;
 run;
 %end;
 
