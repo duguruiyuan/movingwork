@@ -1282,6 +1282,7 @@ VALUE $REPAYDUR_level
 /*			43-48 = '2012.1-2012.6发生业务'*/
 /*			49-54 = '2011.7-2011.12发生业务'*/
 /*			55-HIGH = '2011.6及以前发生业务'*/
+		;
             value OPEN_LEVEL 
              LOW-6=%sysfunc(cats(%sysfunc(putn(%sysfunc(intnx(month,%sysfunc(today()),-6,b)),yymmp8.)),'-',%sysfunc(putn(%sysfunc(intnx(month,%sysfunc(today()),-1,b)),yymmp8.)),发生的业务))
              7-12 =%sysfunc(cats(%sysfunc(putn(%sysfunc(intnx(month,%sysfunc(today()),-12,b)),yymmp8.)),'-',%sysfunc(putn(%sysfunc(intnx(month,%sysfunc(today()),-7,b)),yymmp8.)),发生的业务))

@@ -1,7 +1,6 @@
 %include "C:\work\code\GitHub\movingwork\SAScode\CONFIG.sas";
-/*libname nfcs "D:\数据\201602";*/
 proc sort data = nfcs.sino_loan(drop = sloantype sloancompactcode scurrency iclass5stat iinfoindicator skeepcolumn ipersonid smsgfilename ilineno stoporgcode ipbcstate WHERE=(SUBSTR(sorgcode,1,1)='Q' 
-and istate = 0 AND sorgcode not in ('Q10152900H0000','Q10152900H0001') and datepart(dgetdate) >= &firstday_three. and &firstday. > datepart(dbillingdate) >= &firstday_three.)) out = sino_loan;
+and istate = 0 AND sorgcode not in ('Q10152900H0000','Q10152900H0001'))) out = sino_loan;
 by iloanid dbillingdate descending dgetdate;
 run;
 /*%AddLabel(sino_loan);*/
@@ -10,7 +9,6 @@ informat zhangqi yymmn6.;
 format zhangqi yymmn6.;
  set sino_loan;
  error_flag = 0;
- doubt_flag = 0;
  zhangqi = intnx('month',datepart(dbillingdate),0,'b');
 /*label*/
 /*	&label.*/
@@ -192,7 +190,28 @@ data sino_loan;
  if substr(sPaystat24month,23,1) in ('*','#','/','N') and iaccountstat = 3 and ischeduledamount ^= iactualpayamount  and  ddateclosed = dbillingdate
 then error_flag = 1;
 run;
-
+proc sort data=sino_loan;
+	by sorgcode;
+run;
+data error(keep=sorgcode errorp);
+	set sino_loan(keep=sorgcode error_flag);
+	by sorgcode;
+	retain errorN;
+	retain allN;
+	if first.sorgcode then do;
+		errorN=0;
+		allN=0;
+	end;
+	errorN+error_flag;
+	allN+1;
+	errorp=1-errorN/allN;
+	format errorp percentn8.2;
+	label
+		sorgcode='机构号'
+		errorp='准确率'
+	;
+	if last.sorgcode;
+run;
 /*补充校验规则*/
 
 
@@ -241,50 +260,50 @@ run;
 /*	if sorgcode = lag(sorgcode) then delete;*/
 /*run;*/
 /*输出*/
-proc sql;
-	create table zqx_org as select
-	T2.shortname label = "机构简称"
-	,T2.person
-/*	,sum(1,- sum(doubt_flag)/count(*)) as doubt_per label = "各机构准确率-怀疑" format = percent8.2 informat = percent8.2 */
-	,count(T1.sorgcode) as record_cnt label = "贷款业务记录条数"
-	,sum(t1.error_flag) as record_cnt_error label = "触发错误类规则记录条数"
-	,1 - calculated record_cnt_error/calculated record_cnt as error_per label = "准确率" format = percent8.2 informat = percent8.2
-	,T2.total
-	,t2.in_nfcs
-	,T2.in_per
-	from sino_loan as T1
-	left join _loan_m_sta_ as T2
-	on T1.sorgcode = T2.sorgcode
-	group by T1.sorgcode
-;
-quit;
-data zqx_org;
-	set zqx_org;
-	if shortname = lag(shortname) then delete;
-run;
-proc sort data = zqx_org;
-by desending record_cnt;
-run;
-
-/*ods listing off;*/
- ods tagsets.excelxp file = "&outfile.库中逻辑校验情况表_&currmonth..xls" style = printer
-      options(sheet_name="库中逻辑校验情况表" embedded_titles='yes' embedded_footnotes='yes' sheet_interval="bygroup" frozen_headers='yes' frozen_rowheaders='1' autofit_height='yes');
-proc report data = zqx_org NOWINDOWS headline headskip
-          style(header)={background=lightgray foreground=black font_weight=bold};
-title "库中逻辑校验情况表";
-	columns _all_;
-	define person /display '专管员';
-	define shortname/ display width=5;
-	define record_cnt_error/ display '触发错误类规则/记录条数';
-	define in_per/display center;
-	define error_per/display center;
-	compute after;
- 	if in_per >= 0.9 and error_per >= 0.99 then 
- 		call define(_row_,'style','style={background=lightyellow fontweight=bold}');
- 	endcomp;
-footnote '【准确率】仅考虑类型为【错误】的规则';
-run;
-ods tagsets.excelxp close;
-  ods listing;
-
-
+/*proc sql;*/
+/*	create table zqx_org as select*/
+/*	T2.shortname label = "机构简称"*/
+/*	,T2.person*/
+/*/*	,sum(1,- sum(doubt_flag)/count(*)) as doubt_per label = "各机构准确率-怀疑" format = percent8.2 informat = percent8.2 */*/
+/*	,count(T1.sorgcode) as record_cnt label = "贷款业务记录条数"*/
+/*	,sum(t1.error_flag) as record_cnt_error label = "触发错误类规则记录条数"*/
+/*	,1 - calculated record_cnt_error/calculated record_cnt as error_per label = "准确率" format = percent8.2 informat = percent8.2*/
+/*	,T2.total*/
+/*	,t2.in_nfcs*/
+/*	,T2.in_per*/
+/*	from sino_loan as T1*/
+/*	left join _loan_m_sta_ as T2*/
+/*	on T1.sorgcode = T2.sorgcode*/
+/*	group by T1.sorgcode*/
+/*;*/
+/*quit;*/
+/*data zqx_org;*/
+/*	set zqx_org;*/
+/*	if shortname = lag(shortname) then delete;*/
+/*run;*/
+/*proc sort data = zqx_org;*/
+/*by desending record_cnt;*/
+/*run;*/
+/**/
+/*/*ods listing off;*/*/
+/* ods tagsets.excelxp file = "&outfile.库中逻辑校验情况表_&currmonth..xls" style = printer*/
+/*      options(sheet_name="库中逻辑校验情况表" embedded_titles='yes' embedded_footnotes='yes' sheet_interval="bygroup" frozen_headers='yes' frozen_rowheaders='1' autofit_height='yes');*/
+/*proc report data = zqx_org NOWINDOWS headline headskip*/
+/*          style(header)={background=lightgray foreground=black font_weight=bold};*/
+/*title "库中逻辑校验情况表";*/
+/*	columns _all_;*/
+/*	define person /display '专管员';*/
+/*	define shortname/ display width=5;*/
+/*	define record_cnt_error/ display '触发错误类规则/记录条数';*/
+/*	define in_per/display center;*/
+/*	define error_per/display center;*/
+/*	compute after;*/
+/* 	if in_per >= 0.9 and error_per >= 0.99 then */
+/* 		call define(_row_,'style','style={background=lightyellow fontweight=bold}');*/
+/* 	endcomp;*/
+/*footnote '【准确率】仅考虑类型为【错误】的规则';*/
+/*run;*/
+/*ods tagsets.excelxp close;*/
+/*  ods listing;*/
+/**/
+/**/
