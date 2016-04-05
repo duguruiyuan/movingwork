@@ -1,10 +1,10 @@
 /*libname nfcs "D:\数据\&curr_month.";*/
-%INCLUDE "E:/新建文件夹/SAS/常用代码/自动化/000_FORMAT.sas";
-%include "E:/新建文件夹/SAS/基础宏.sas";
-%include "E:/新建文件夹/SAS/config.sas";
+/*%INCLUDE "E:/新建文件夹/SAS/常用代码/自动化/000_FORMAT.sas";*/
+/*%include "E:/新建文件夹/SAS/基础宏.sas";*/
+%include "E:\林佳宁\code\GitHub\movingwork\SAScode\config.sas";
 
 %let startdate = %sysfunc(mdy(3,1,2016));
-%let enddate = %sysfunc(mdy(3,15,2016));
+%let enddate = %sysfunc(mdy(3,31,2016));
 %let onemonthdate = %sysfunc(mdy(3,1,2016));
 %let last_month= month(intnx('month',&enddate.,-1,'b'));
 %let onemonthperiod = intck("day",&onemonthdate.,&enddate.);

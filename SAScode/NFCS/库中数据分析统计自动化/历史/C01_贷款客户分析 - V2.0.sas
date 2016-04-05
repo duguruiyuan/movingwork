@@ -5,12 +5,7 @@
 %LET LAST_DT=INTNX('MONTH',&STAT_DT.,-1,'END');
 
 /*本月(T-1)数据处理 去重处理并取最新一条*/
-data sino_person_certification_n;
- set SSS.Sino_person_certification(WHERE=(SUBSTR(SORGCODE,1,1)='Q' AND 
-                                          SORGCODE^='Q10152900H0000' AND SORGCODE^='Q10152900H0001' AND 
-                                          DATEPART(DGETDATE)<=&STAT_DT.));
-run;
-PROC SORT DATA=sino_person_certification_n  OUT=SINO_PERSON_CERT ;
+PROC SORT DATA=SSS.Sino_person_certification(WHERE=(SUBSTR(SORGCODE,1,1)='Q' AND SORGCODE^='Q10152900H0000' AND SORGCODE^='Q10152900H0001' AND DATEPART(DGETDATE)<=&STAT_DT.))  OUT=SINO_PERSON_CERT ;
 	BY SCERTNO DGETDATE;
 RUN;
 DATA SINO_PERSON_CERT1;
@@ -19,12 +14,7 @@ DATA SINO_PERSON_CERT1;
 	IF LAST.SCERTNO;
 RUN;
 
-data sino_person_n;
- set SSS.Sino_person(WHERE=(SUBSTR(SORGCODE,1,1)='Q' AND 
-                            SORGCODE^='Q10152900H0000' AND SORGCODE^='Q10152900H0001' AND 
-                            DATEPART(DGETDATE)<=&STAT_DT.));
-run;
-PROC SORT DATA=sino_person_n  OUT=SINO_PERSON ;
+PROC SORT DATA=SSS.Sino_person(keep= spin DGETDATE WHERE=(SUBSTR(SORGCODE,1,1)='Q' AND SORGCODE^='Q10152900H0000' AND SORGCODE^='Q10152900H0001' AND DATEPART(DGETDATE)<=&STAT_DT.))  OUT=SINO_PERSON ;
 	BY spin DGETDATE;
 RUN;
 DATA SINO_PERSON1;
@@ -33,12 +23,7 @@ DATA SINO_PERSON1;
 	IF LAST.spin;
 RUN;
 /*上月(T-2)数据处理 去重处理并取最新一条*/
-data sino_person_certification_o;
- set SSS.Sino_person_certification(WHERE=(SUBSTR(SORGCODE,1,1)='Q' AND 
-                                          SORGCODE^='Q10152900H0000' AND SORGCODE^='Q10152900H0001' AND 
-                                          DATEPART(DGETDATE)<=&LAST_DT.));
-run;
-PROC SORT DATA=sino_person_certification_o  OUT=SINO_PERSON_CERT_O ;
+PROC SORT DATA=SSS.Sino_person_certification(WHERE=(SUBSTR(SORGCODE,1,1)='Q' AND SORGCODE^='Q10152900H0000' AND SORGCODE^='Q10152900H0001' AND DATEPART(DGETDATE)<=&LAST_DT.))  OUT=SINO_PERSON_CERT_O ;
 	BY SCERTNO DGETDATE;
 RUN;
 DATA SINO_PERSON_CERT_01;
@@ -47,12 +32,7 @@ DATA SINO_PERSON_CERT_01;
 	IF LAST.SCERTNO;
 RUN;
 
-data sino_person_o;
- set SSS.Sino_person(WHERE=(SUBSTR(SORGCODE,1,1)='Q' AND 
-                            SORGCODE^='Q10152900H0000' AND SORGCODE^='Q10152900H0001' AND 
-                            DATEPART(DGETDATE)<=&LAST_DT.));
-run;
-PROC SORT DATA=sino_person_o  OUT=SINO_PERSON_O ;
+PROC SORT DATA=SSS.Sino_person(keep= spin DGETDATE WHERE=(SUBSTR(SORGCODE,1,1)='Q' AND SORGCODE^='Q10152900H0000' AND SORGCODE^='Q10152900H0001' AND DATEPART(DGETDATE)<=&LAST_DT.))  OUT=SINO_PERSON_O ;
 	BY spin DGETDATE;
 RUN;
 DATA SINO_PERSON_01;
@@ -66,42 +46,50 @@ RUN;
 /*T-1月*/
 PROC SQL;
 	CREATE TABLE CUST_LOANIND AS SELECT
-		 A.SCERTNO
-		 ,B.SACCOUNT
+		 distinct A.spin as spin
+		 ,(case when B.SACCOUNT is null then 0 else 1 end ) as loanind
 	FROM SINO_PERSON_CERT1 AS A
-	LEFT JOIN Sino_loan_n3 AS B ON A.SCERTNO=B.SCERTNO;
+	LEFT JOIN (select distinct spin as spin,SACCOUNT from sss.sino_loan) AS B 
+	ON A.spin = B.spin
+	order by calculated loanind desc
+	;
 QUIT;
 
-DATA CUST_LOANIND1;
-	SET CUST_LOANIND;
-	IF SACCOUNT^='' THEN LOANIND=1;
-	ELSE LOANIND=0;
-RUN;
+/*DATA CUST_LOANIND1;*/
+/*	SET CUST_LOANIND;*/
+/*	IF SACCOUNT^='' THEN LOANIND=1;*/
+/*	ELSE LOANIND=0;*/
+/*RUN;*/
 /*T-2月*/
 PROC SQL;
 	CREATE TABLE CUST_LOANIND_0 AS SELECT
-		 A.SCERTNO
-		 ,B.SACCOUNT
+		 distinct A.spin as spin
+		 ,(case when B.SACCOUNT is null then 0 else 1 end ) as loanind
 	FROM SINO_PERSON_CERT_O AS A
-	LEFT JOIN Sino_loan_n3 AS B ON A.SCERTNO=B.SCERTNO;
+	LEFT JOIN (select distinct spin as spin,SACCOUNT from sss.sino_loan) AS B 
+	ON A.spin = B.spin
+	order by calculated loanind desc
+;
 QUIT;
 
-DATA CUST_LOANIND0;
-	SET CUST_LOANIND_0;
-	IF SACCOUNT^='' THEN LOANIND=1;
-	ELSE LOANIND=0;
-RUN;
+/*DATA CUST_LOANIND0;*/
+/*	SET CUST_LOANIND_0;*/
+/*	IF SACCOUNT^='' THEN LOANIND=1;*/
+/*	ELSE LOANIND=0;*/
+/*RUN;*/
 
 proc sql noprint;
-select count(DISTINCT SCERTNO) into:cust_total_now
-from CUST_LOANIND;
+select count(DISTINCT SPIN) into:cust_total_now
+from CUST_LOANIND
+;
 
-select count(DISTINCT SCERTNO) into:cust_total_last
+select count(DISTINCT SPIN) into:cust_total_last
 from CUST_LOANIND_0;
 quit;
 
+/*T-2月有贷款业务客户占比*/
 data _null_;
-	set CUST_LOANIND0(keep=loanind);
+	set CUST_LOANIND_0(keep=loanind);
 	retain CUST_CNT1 0 CUST_CNT2 0;
 		if loanind=0 then CUST_CNT1=CUST_CNT1+1;
 		else if loanind=1 then CUST_CNT2=CUST_CNT2+1;
@@ -112,9 +100,9 @@ run;
 PROC SQL;
 	CREATE TABLE C01 AS SELECT
 		LOANIND label="是否发生业务"
-		,COUNT(DISTINCT SCERTNO) AS CUST_CNT label="总量客户数"
+		,COUNT(DISTINCT SPIN) AS CUST_CNT label="总量客户数"
 		,calculated CUST_CNT/&cust_total_now. as per_now label="当月占比"
-	FROM CUST_LOANIND1
+	FROM CUST_LOANIND
 	GROUP BY LOANIND;
 QUIT;
 
@@ -159,7 +147,9 @@ PROC SQL;
 		 ,DATEPART(B.dbirthday) AS BIRTH FORMAT=YYMMDD10. INFORMAT=YYMMDD10.
 		 ,B.IGENDER
 	FROM SINO_PERSON_CERT1 AS A
-	LEFT JOIN SINO_PERSON1 AS B ON  A.spin=B.spin;
+	LEFT JOIN SINO_PERSON1 AS B 
+	ON  A.spin = B.spin
+;
 QUIT;
 
 DATA CUST_SEX_1;
@@ -187,7 +177,9 @@ PROC SQL;
 		 ,DATEPART(B.dbirthday) AS BIRTH FORMAT=YYMMDD10. INFORMAT=YYMMDD10.
 		 ,B.IGENDER
 	FROM SINO_PERSON_CERT1 AS A
-	LEFT JOIN SINO_PERSON1 AS B ON  A.spin=B.spin;
+	LEFT JOIN SINO_PERSON1 AS B 
+	ON  A.spin=B.spin
+;
 QUIT;
 
 DATA CUST_SEX_1;

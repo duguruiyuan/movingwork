@@ -2,7 +2,7 @@
 /*更新时间 2015-5-4 更新人：李楠*/
 /*更新时间 20160227 更新人：李楠 更新内容：将输出方式改为ods+proc report*/
 /*注意修改时间段;*/
-%LET END=MDY(3,15,2016);
+%LET END=MDY(3,31,2016);
 %LET START=MDY(3,1,2016);
 %LET START_THREE = intnx('month',&START.,-2,'b');
 %put &STAT_OP.;
@@ -10,18 +10,14 @@
 %put &END.;
 %put &START_THREE.;
 %put &curr_month.;
-%include "E:\新建文件夹\SAS\基础宏.sas";
-%include "E:\新建文件夹\SAS\config.sas";
-%ChkFile(E:\新建文件夹\&curr_month.\NFCS);
-%ChkFile(E:\新建文件夹\SAS\常用代码\自动化\结果文件夹\月报结果\&curr_month.);
+%include "E:\林佳宁\code\GitHub\movingwork\SAScode\config.sas";
+%ChkFile(E:\林佳宁\笔记\工作笔记\CREDIT\公共资料\SAS代码\NFCS\结果文件夹\月报结果\&curr_month.);
 
 /*%ChkFile(D:\数据\&STAT_OP.);*/
 /*LIBNAME SSS "D:\数据\&STAT_OP.";*/
 /*OPTIONS NOXWAIT MPRINT MLOGIC COMPRESS=YES;*/
 options compress=yes mprint mlogic noxwait;
 /*libname nfcs "C:\Users\linan\Documents\工作\NFCS库中数据\201602";*/
-%INCLUDE "E:\新建文件夹\SAS\常用代码\自动化\000_FORMAT.sas";
-%FORMAT;
 
 /*贷款申请信息*/
 PROC SQL;
@@ -428,7 +424,7 @@ retain shortname;
 run;
 
 /*E:\新建文件夹\SAS\常用代码\自动化\结果文件夹\月报结果\&curr_month.\NFCS运营月报-&STAT_OP..xls*/
-ods tagsets.excelxp file="E:\新建文件夹\SAS\常用代码\自动化\结果文件夹\月报结果\&curr_month.\NFCS运营月报-&STAT_OP..xls" style = printer
+ods tagsets.excelxp file="E:\林佳宁\笔记\工作笔记\CREDIT\公共资料\SAS代码\NFCS\结果文件夹\月报结果\&curr_month.\NFCS运营月报-&STAT_OP..xls" style = printer
       options(sheet_name="NFCS运营月报" embedded_titles='yes' embedded_footnotes='yes' sheet_interval="bygroup");
 proc report data = result NOWINDOWS headline headskip style(header)={background=lightgray foreground=black bold};
 	columns xuhao sorgcode shortname person type ('报送情况' SF_NOW SF_LAST SF_ADD SF_per loan_NOW loan_LAST loan_ADD loan_per sq_NOW sq_LAST sq_ADD sq_per spec_NOW spec_LAST spec_per)
@@ -477,7 +473,7 @@ ods tagsets.excelxp close;
 
 
 
-libname xls excel "E:\新建文件夹\SAS\常用代码\自动化\结果文件夹\月报结果\&curr_month.\NFCS运营月报-&STAT_OP..xlsx";
+libname xls excel "E:\林佳宁\笔记\工作笔记\CREDIT\公共资料\SAS代码\NFCS\结果文件夹\月报结果\&curr_month.\NFCS运营月报-&STAT_OP..xlsx";
 	data xls.NFCS运营月度报表(dblabel=yes);
 		set result;
 	run;

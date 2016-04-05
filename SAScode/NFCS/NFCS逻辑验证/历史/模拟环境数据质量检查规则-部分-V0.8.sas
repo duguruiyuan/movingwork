@@ -1,46 +1,29 @@
-%include "E:/林佳宁/code/config.sas";
-%let lib = %str(work);
-/*%let orgfilter = %nrstr(and sorgcode in ('Q10151000H3000' 'Q10152900H0900'));*/
-%let orgfilter = %nrstr(and sorgcode in ('Q10152900H9800' 'Q10151000H8800' 'Q10152900H1D00' 'Q10152900HT400' 'Q10153300HDW00' 'Q10152900HFJ00' 'Q10152900H2Z00' 'Q10152900H1W00' 'Q10152900H8500' 'Q10152900H0900' 'Q10151000H3000' 'Q10152900HN500' 'Q10152900HAZ00' 'Q10152900H1200' 'Q10152900H1W00' 'Q10153900H7T00' 'Q10152900HC000' 'Q10151000H0G00' 'Q10155800HZ200' 'Q10152900H9C00' 'Q10155800H2P00' 'Q10152900HAL00' 'Q10152900HN300' 'Q10155800H5400' 'Q10152900H3500' 'Q10155800HCV00'
-'Q10155800HS000' 'Q10152900H1400' 'Q10151000H0Y00' 'Q10152900HD900' 'Q10155800H3200' 'Q10152900H0900' 'Q10152900HU700' 'Q10151000H2800' 'Q10152900H7C00' 'Q10155800H6800' 'Q10151000HV200'));
+%include "E:/新建文件夹/SAS/config.sas";
+%let lib = %str(nfcstest);
+%let orgfilter = %nrstr(and sorgcode in ('Q10152900HU700' 'Q10151000HV200' 'Q10151000H0G00' 'Q10155800HS000' 'Q10155800H2P00' 'Q10152900HN500' 'Q10151000H0Y00' 'Q10152900H0900'));
 data _null_;
 	if %sysfunc(length(&orgfilter.)) = 0 then orgfilter = " ";
 run;
-%let timefilter = %str(and dgetdate >= &firstday_three. and &firstday. > datepart(dbillingdate) >= &firstday_three.);
-%let NoteAddr = %unquote(%str(E:\林佳宁\code\数据质量\数据质量检查系统输出结果说明-V1.7.docx));
+%let timefilter = %str(and dgetdate >= mdy(3,1,2016) and &firstday. > datepart(dbillingdate) >= &firstday_three.);
+%let NoteAddr = %unquote(%str(D:\逻辑校验结果\数据质量检查系统输出结果说明-V1.5.docx));
 
 /*建立本期文件夹*/
 /*写成宏*/
 
 /*将数据从NFCS库中抽取到数据仓库中*/
-proc sort data = nfcs.sino_loan(drop = scurrency iclass5stat iinfoindicator skeepcolumn ipersonid ilineno stoporgcode ipbcstate WHERE=(SUBSTR(sorgcode,1,1)='Q' 
-and ISTATE = 0 AND sorgcode not in ('Q10152900H0000','Q10152900H0001') &orgfilter. )) out = &lib..sino_loan;
-by iloanid dbillingdate descending dgetdate;
+/*暂时不采用这个方法*/
+proc sort data = nfcs.sino_loan(drop = iid dgetdate sloancompactcode scurrency iclass5stat iinfoindicator sname scerttype scertno skeepcolumn ipersonid smsgfilename ilineno stoporgcode istate ipbcstate WHERE=(iaccountstat = 3 and SUBSTR(sorgcode,1,1)='Q' AND sorgcode not in ('Q10152900H0000','Q10152900H0001'))) out = sino_loan_paid_his;
+by iloanid dbillingdate;
 run;
-data &lib..sino_loan;
-informat zhangqi yymmn6.;
-format zhangqi yymmn6.;
- set &lib..sino_loan;
- zhangqi = intnx('month',datepart(dbillingdate),0,'b');
-;
-run;
-proc sort data = &lib..sino_loan;
-	by iloanid zhangqi descending dgetdate;
-run;
-data &lib..sino_loan;
-	set &lib..sino_loan;
-	if iloanid = lag(iloanid) and zhangqi = lag(zhangqi) then delete;
-run;
+
 /*Rule 1*/
 /*1、结清时，上报"结算应还款日期"是否取结清日（不一定是问题的情况：结清日与最后一次还款不在同一天）*/
 /*怀疑*/
 proc sql;
 create table rule_1 as
 select t.sorgcode  label = "机构代码",
-		smsgfilename label = "报文名称",
-       t.saccount  label = "业务号", 
-	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+       t.saccount  label = "业务号",
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
        t.sTermsfreq     label = "还款频率",
@@ -60,10 +43,8 @@ quit;
 proc sql;
 create table rule_2 as 
 select a.sorgcode     label = "机构代码",
-		smsgfilename label = "报文名称",
-       a.saccount  label = "业务号", 
-	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+       a.saccount         label = "业务号",
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
        a.dbillingdate     label = "结算应还款日期",
@@ -88,10 +69,8 @@ quit;
 proc sql;
 create table rule_3 as
 select a.sorgcode label = "机构代码",
-		smsgfilename label = "报文名称",
 a.saccount label = "业务号",
-	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
 a.sTermsfreq label = "还款频率",
@@ -112,10 +91,8 @@ from &lib..sino_loan(where = (dbillingdate <= drecentpaydate and iactualpayamoun
 proc sql;
 create table rule_4 as select
 		t.sorgcode label = "机构代码",
-		smsgfilename label = "报文名称",
 		t.saccount         label = "业务号",
-	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
        t.dbillingdate     label = "结算应还款日期",
@@ -137,10 +114,8 @@ quit;
 proc sql;
 create table rule_5 as select
 a.sorgcode label = "机构代码",
-smsgfilename label = "报文名称",
 a.saccount label = "业务号",
-	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
 a.sTermsfreq label = "还款频率",
@@ -160,10 +135,8 @@ quit;
 proc sql;
 create table rule_6 as select
  a.sorgcode label = "机构代码",
- 		smsgfilename label = "报文名称",
 a.saccount label = "业务号",
-	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
 a.sTermsfreq label = "还款频率",
@@ -183,10 +156,8 @@ quit;
 proc sql;
 create table rule_7 as select
 a.sorgcode label = "机构代码",
-smsgfilename label = "报文名称",
 a.saccount label = "业务号",
-	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
 a.sTermsfreq label = "还款频率",
@@ -208,10 +179,8 @@ quit;
 proc sql;
 create table rule_8 as select
 		a.sorgcode     label = "机构代码",
-				smsgfilename label = "报文名称",
        a.saccount         label = "业务号",
-	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
        a.sTermsfreq       label = "还款频率",
@@ -222,7 +191,7 @@ datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. infor
        a.sPaystat24month  label = "二十四月还款状态"
   from &lib..sino_loan(where = (1=1 &timefilter. &orgfilter.)) as a
 where iActualpayamount > ischeduledamount and dbillingdate < ddateclosed and intnx('month',datepart(dbillingdate),0,'b') ^= intnx('month',datepart(ddateclosed),0,'b')
-   and substr(sPaystat24month,23,1) in ('*','#','/','N') and iloanid not in (select iloanid from nfcs.sino_loan_spec_trade where speculiartradetype in ('4','5','9'))
+   and substr(sPaystat24month,23,1) in ('*','#','/','N') and iloanid not in (select iloanid from &lib..sino_loan_spec_trade where speculiartradetype in ('4','5','9'))
     order by sorgcode,saccount,dbillingdate
 ;
 quit;
@@ -233,10 +202,8 @@ quit;
 proc sql;
 create table rule_9 as select
 		a.sorgcode     label = "机构代码",
-				smsgfilename label = "报文名称",
        a.saccount         label = "业务号",
-	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
        a.sTermsfreq       label = "还款频率",
@@ -256,10 +223,8 @@ quit;
 proc sql;
 create table rule_10 as select
 a.sorgcode label = "机构代码",
-		smsgfilename label = "报文名称",
 a.saccount label = "业务号",
-	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
 a.sTermsfreq label = "还款频率",
@@ -280,10 +245,8 @@ quit;
 proc sql;
 create table rule_11 as select
 a.sorgcode     label = "机构代码",   
-		smsgfilename label = "报文名称",
 a.saccount         label = "业务号",
-	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
 a.sTermsfreq       label = "还款频率",
@@ -302,25 +265,22 @@ from &lib..sino_loan(where = (substr(sPaystat24month, 23, 2) = 'N1'
 quit;
 
 /*Rule 12*/
-/*19、按月还款除开户外,"本月应还款金额"不应该为0(特殊情况除外)。已将开户当月提前还款的情况排除掉*/
+/*19、按月还款除开户外,"本月应还款金额"不应该为0(特殊情况除外)*/
 /*错误*/
 proc sql;
 create table rule_12 as select
 a.sorgcode label = "机构代码",
-		smsgfilename label = "报文名称",
 a.saccount label = "业务号",
-scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
 a.sTermsfreq label = "还款频率",
-datepart(a.dbillingdate) as dbillingdate label = "结算应还款日期"  format = yymmdd10. informat = yymmdd10.,
+a.dbillingdate label = "结算应还款日期",
 a.drecentpaydate label = "最近一次还款日期",
 a.ischeduledamount label = "本月应还款金额",
 a.iactualpayamount label = '实际还款金额',
 a.sPaystat24month label = '二十四月还款状态'
-  from &lib..sino_loan(where = (sPaystat24month ^= '///////////////////////*' and sTermsfreq = '03' and ischeduledamount=0 and intnx('month',datepart(dbillingdate),0,'end') ^= intnx('month',datepart(ddateopened),0,'end')
-&timefilter. &orgfilter.)) as a
+  from &lib..sino_loan(where = (sPaystat24month ^= '///////////////////////*' and sTermsfreq = '03' and ischeduledamount=0 &timefilter. &orgfilter.)) as a
 /* where a.sPaystat24month ^= '///////////////////////*' and a.sTermsfreq = '03' and a.ischeduledamount=0 &timefilter. &orgfilter.*/
     order by sorgcode,saccount,dbillingdate
 ;
@@ -332,10 +292,8 @@ quit;
 proc sql;
 create table rule_13 as select
 		a.sorgcode label = "机构代码",
-				smsgfilename label = "报文名称",
        a.saccount label = "业务号",
-	   	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
        a.sTermsfreq label = "还款频率",
@@ -355,15 +313,13 @@ quit;
 /*Rule 14*/
 /*22、到期后，"累计逾期期数"、"当前逾期期数"、"最高逾期期数"不应该继续累计*/
 /*错误*/
-/*筛选到期后未结清的业务，并按业务号、账期排序*/
+/*需要更新*/
 proc sql;
 create table rule_14 as select
-a.sorgcode     label = "机构代码",
-smsgfilename label = "报文名称",
+ a.sorgcode     label = "机构代码",
 a.saccount         label = "业务号",
-scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
-datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
+/*datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,*/
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
 a.sTermsfreq       label = "还款频率",
 a.dbillingdate     label = "结算应还款日期",
@@ -381,13 +337,10 @@ a.iloanid
    order by sorgcode,saccount,dbillingdate
 ;
 quit;
-/*根据账期排序，如当前逾期、累计逾期、最高逾期三项没有继续累加的，则删除*/
 data rule_14;
 	set rule_14;
-	if sorgcode = lag(sorgcode) and saccount = lag(saccount) and dbillingdate > lag(dbillingdate) and icurtermspastdue <= lag(icurtermspastdue) 
-and itermspastdue <= lag(itermspastdue) and imaxtermspastdue <= lag(imaxtermspastdue) then delete;
+	if sorgcode = lag(sorgcode) and saccount = lag(saccount) and dbillingdate > lag(dbillingdate) and icurtermspastdue <= lag(icurtermspastdue) and itermspastdue <= lag(itermspastdue) and imaxtermspastdue <= lag(imaxtermspastdue) then delete;
 run;
-/*统计剩余的业务数，合规业务应该只剩到期日期当月的账期，不合规业务的账期数大于1，记录不合规业务的iloanid*/
 proc sql;
 	create table rule_14_t as select
 		iloanid
@@ -397,7 +350,6 @@ proc sql;
 		having calculated cnt > 1
 	;
 quit;
-/*将不合规业务到期后的账期全部筛选出*/
 proc sql;
 	create table rule_14 as select
 		a.*
@@ -405,14 +357,8 @@ proc sql;
 		where a.iloanid in (select iloanid from rule_14_t)
 	;
 quit;
-/*V1.0添加-如到期业务当月未报送，且未发生提前还款的贷款业务，在到期当月后报送的，由于无法判别到期后第一笔账期当前逾期、累计逾期、最高逾期三项是否正确，
-根据审慎原则，将该业务到期后第一笔业务加上怀疑标签 待添加*/
-proc sort data = rule_14;
-	by iloanid dbillingdate;
-run;
 data rule_14;
 	set rule_14(drop = iloanid);
-	if first.dbillingdate then delete;
 run;
 
 /*Rule 15*/
@@ -421,10 +367,8 @@ run;
 proc sql;
 create table rule_15 as select
 a.sorgcode label = "机构代码",
-		smsgfilename label = "报文名称",
 a.saccount label = "业务号",
-	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
 a.sTermsfreq label = "还款频率",
@@ -444,10 +388,8 @@ quit;
 proc sql;
 create table rule_16 as select
 a.sorgcode label = "机构代码",
-		smsgfilename label = "报文名称",
 a.saccount label = "业务号",
-	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
 a.sTermsfreq label = "还款频率",
@@ -467,10 +409,8 @@ quit;
 proc sql;
 create table rule_17 as select
 	   a.sorgcode     label = "机构代码",
-	   		smsgfilename label = "报文名称",
        a.saccount         label = "业务号",
-	   	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
        a.sTermsfreq       label = "还款频率",
@@ -496,10 +436,8 @@ quit;
 proc sql;
 create table rule_18 as select
 a.sorgcode label = "机构代码",
-		smsgfilename label = "报文名称",
 a.saccount label = "业务号",
-	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
 a.sTermsfreq label = "还款频率",
@@ -520,11 +458,9 @@ quit;
 proc sql;
 create table rule_19 as select
 a.sorgcode label = "机构代码",
-		smsgfilename label = "报文名称",
 a.saccount label = "业务号",
-	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
-datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
+/*datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,*/
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
 a.sTermsfreq label = "还款频率",
 a.dbillingdate label = "结算应还款日期",
@@ -547,10 +483,8 @@ quit;
 proc sql;
 create table rule_20 as select
 sorgcode     label = "机构代码",  
-		smsgfilename label = "报文名称",
-saccount  label = "业务号", 
-scertno label = '证件号码',
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+saccount     label = "业务号",
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
 sTermsfreq   label = "还款频率",
@@ -572,15 +506,13 @@ quit;
 proc sql;
 create table rule_21 as select
 c.sorgcode  label = "机构代码",
-		smsgfilename label = "报文名称",
 c.saccount      label = "业务号",
-  scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
 c.iguaranteeway label = "担保方式"
   from &lib..sino_loan(where = (1=1 &timefilter. &orgfilter.)) as c 
-where c.iguaranteeway in (3, 5, 7) and c.iloanid not in (select iloanid from nfcs.sino_loan_guarantee)
+where c.iguaranteeway in (3, 5, 7) and c.iloanid not in (select iloanid from &lib..sino_loan_guarantee)
 order by sorgcode,saccount
 ;
 quit;
@@ -591,10 +523,8 @@ quit;
 proc sql;
 create table rule_22 as select
 a.sorgcode label = "机构代码",
-		smsgfilename label = "报文名称",
 a.saccount label = "业务号",
-	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
 a.sTermsfreq label = "还款频率",
@@ -612,10 +542,8 @@ quit;
 proc sql;
 create table rule_23 as select
  	   a.sorgcode label = "机构代码",
-	   		smsgfilename label = "报文名称",
        a.saccount label = "业务号",
-	   	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
        a.sTermsfreq label = "还款频率",
@@ -636,10 +564,8 @@ datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. infor
  proc sql;
 create table rule_24 as select
  t.sorgcode label = "机构代码",
- 		smsgfilename label = "报文名称",
  t.saccount label = "业务号",
- datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
- dbillingdate label = "结算应还款日期",
+ datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
  t.sareacode label = '发生地点'
   from &lib..sino_loan(where = (substr(sareacode, 3, 4) = '0000' &timefilter. &orgfilter.)) as t
 /* where substr(sareacode, 3, 4) = '0000' &timefilter. &orgfilter.*/
@@ -668,11 +594,10 @@ proc sql;
 	create table sino_loan_1 as select
 		substr(sorgcode,1,14) as sorgcode
 		,saccount
-		,scertno
 		,intnx('month',datepart(DDATEOPENED),0,'b') as omonth FORMAT=yymmn6. INFORMAT=yymmn6.
 		,intnx('month',datepart(DDATECLOSED),0,'b') as cmonth FORMAT=yymmn6. INFORMAT=yymmn6.
 		,intnx('month',datepart(DBILLINGDATE),0,'b') as dmonth FORMAT=yymmn6. INFORMAT=yymmn6.
-	from &lib..sino_loan(keep = scertno SORGCODE saccount dgetdate DDATEOPENED DDATECLOSED DBILLINGDATE iaccountstat where=(sorgcode like 'Q%' and datepart(DBILLINGDATE) < today() and iaccountstat in (1,2) &timefilter. &orgfilter.))
+	from &lib..sino_loan(keep = SORGCODE saccount dgetdate DDATEOPENED DDATECLOSED DBILLINGDATE iaccountstat where=(sorgcode like 'Q%' and datepart(DBILLINGDATE) < today() and iaccountstat in (1,2) &timefilter. &orgfilter.))
 	order by saccount,dmonth
 ;
 quit;
@@ -684,10 +609,9 @@ proc sql;
 	create table sorgcodesaccount_ as select
 		sorgcode
 		,saccount
-		,scertno
 		,intnx('month',datepart(DDATEOPENED),0,'b') as omonth FORMAT=yymmn6. INFORMAT=yymmn6.
 		,intnx('month',datepart(DDATECLOSED),0,'b') as cmonth FORMAT=yymmn6. INFORMAT=yymmn6.
-	from &lib..sino_loan(keep = scertno SORGCODE saccount dgetdate DDATEOPENED DDATECLOSED DBILLINGDATE iaccountstat where=(sorgcode like 'Q%' and datepart(DBILLINGDATE) < today() and iaccountstat in (1,2)))
+	from &lib..sino_loan(keep = SORGCODE saccount dgetdate DDATEOPENED DDATECLOSED DBILLINGDATE iaccountstat where=(sorgcode like 'Q%' and datepart(DBILLINGDATE) < today() and iaccountstat in (1,2)))
 ;
 quit;
 
@@ -699,7 +623,6 @@ proc sql;
 	create table sino_loan_2 as select 
 		Sorgcodesaccount_.SORGCODE
 		,Sorgcodesaccount_.saccount
-		,sorgcodesaccount_.scertno
 		,Sorgcodesaccount_.omonth
 		,Sorgcodesaccount_.cmonth
 		,dmonth.dmonth
@@ -724,7 +647,6 @@ proc sql;
 	create table rule_25 as select
 		t1.sorgcode label='机构代码'
 		,t1.saccount label='业务号'
-		,t1.scertno label = '证件号码'
 		,t1.omonth label='贷款业务开立月份'
 		,t1.cmonth label='贷款业务终止月份'
 		,t1.dmonth label='未入库账期'
@@ -740,7 +662,7 @@ quit;
 /*Rule 26*/
 /*不同借款人使用同一贷款业务号的问题*/
 /*怀疑*/
-PROC SORT DATA=&lib..SINO_LOAN(KEEP= smsgfilename iloanid sorgcode SACCOUNT dgetdate ddateopened dbillingdate icreditlimit ibalance sname scerttype scertno)  OUT=rule_26_t;
+PROC SORT DATA=&lib..SINO_LOAN(KEEP=iloanid sorgcode SACCOUNT dgetdate ddateopened dbillingdate icreditlimit ibalance sname scerttype scertno)  OUT=rule_26_t;
 BY SORGCODE SACCOUNT scertno;
 RUN;
 
@@ -749,7 +671,6 @@ data rule_26_t2;
 	if sorgcode = lag(sorgcode) and SACCOUNT = lag(SACCOUNT) and ddateopened = lag(ddateopened) and scertno ^= lag(scertno);
 	label
 	sorgcode = 机构代码
-	smsgfilename = 报文名称
 	SACCOUNT = 业务号
 	sname = 姓名
 	scerttype = 证件类型
@@ -768,12 +689,10 @@ proc sql;
 ;
 quit;
 data rule_26;
-retain sorgcode SACCOUNT;
 	set rule_26(drop = iloanid);
 label
 	sorgcode = 机构代码
-		smsgfilename = 报文名称
-	dgetdate = 加载日期
+	dgetdate = 报送时间
 	SACCOUNT = 业务号
 	sname = 姓名
 	scerttype = 证件类型
@@ -788,7 +707,7 @@ run;
 /*Rule 27*/
 /*同一贷款业务的不同账期使用不同业务号的问题*/
 /*怀疑*/
-PROC SORT DATA=&lib..SINO_LOAN(KEEP= sorgcode smsgfilename sname scerttype scertno SACCOUNT ddateopened dgetdate dbillingdate icreditlimit ibalance)  OUT=rule_27_t;
+PROC SORT DATA=&lib..SINO_LOAN(KEEP= sorgcode sname scerttype scertno SACCOUNT ddateopened dgetdate dbillingdate icreditlimit ibalance)  OUT=rule_27_t;
 BY SORGCODE scertno SACCOUNT;
 RUN;
 data rule_27_t2;
@@ -796,7 +715,6 @@ data rule_27_t2;
 	if sorgcode= lag(sorgcode) and scertno = lag(scertno) and SACCOUNT ^= lag(saccount) and ICREDITLIMIT = lag(ICREDITLIMIT) and ddateopened = lag(ddateopened);
 	label
 	sorgcode = 机构代码
-	smsgfilename = 报文名称
 	SACCOUNT = 业务号
 	sname = 姓名
 	scerttype = 证件类型
@@ -816,12 +734,9 @@ proc sql;
 ;
 quit;
 data Rule_27;
-retain sorgcode SACCOUNT;
 	set Rule_27(where = (1=1 &timefilter. &orgfilter.));
 	label
 	sorgcode = 机构代码
-	smsgfilename = 报文名称
-	dgetdate = 加载日期
 	SACCOUNT = 业务号
 	sname = 姓名
 	scerttype = 证件类型
@@ -831,6 +746,8 @@ retain sorgcode SACCOUNT;
 	icreditlimit = 授信额度
 	ibalance = 余额
 	;
+run;
+
 run;
 
 
@@ -863,7 +780,7 @@ set rule_28_t;
 	interest_year_single = round(interest * 12 /MONTHDURATION,0.0001);
 	if 0.06 <= interest_year_single <=0.6 then delete;
 	label
-	dgetdate = 加载日期
+	dgetdate = 报送日期
 	saccount = 业务号
 	interest_year_single = 年化收益率(百分比)
 	STREATYPAYDUE_num = 协定还款期数_整型
@@ -888,13 +805,13 @@ proc sql;
     create table rule_29_temp as select
     T1.sorgcode label = "机构代码"
     ,T1.saccount label = "业务号",
-	datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+	datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 	datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 	datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.
     ,T1.dbillingdate  label = "结算应还款日期"
     ,T2.duploadtime label = "报文上传时间"
     from &lib..sino_loan(where = (1=1 &timefilter. &orgfilter.)) as T1
-    left join nfcs.sino_msg as T2
+    left join &lib..sino_msg as T2
     on T1.SMSGFILENAME = T2.SMSGFILENAME and T1.dbillingdate > T2.duploadtime and T2.duploadtime is not null
 ;
 quit;
@@ -903,13 +820,13 @@ proc sql;
 	create table rule_29 as select
 	T1.sorgcode label = "机构代码"
 	,T1.saccount label = "业务号",
-	datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+	datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.
 	,T1.dbillingdate  label = "结算应还款日期"
 	,T2.duploadtime label = "报文上传时间"
 	from &lib..sino_loan as T1
-	left join nfcs.sino_msg as T2
+	left join &lib..sino_msg as T2
 	on T1.SMSGFILENAME = T2.SMSGFILENAME 
 	where T2.duploadtime is not null and datepart(T1.dbillingdate) > datepart(duploadtime)
 	order by sorgcode,saccount,dbillingdate
@@ -923,13 +840,13 @@ proc sql;
 	create table rule_30 as select
 	T1.sorgcode label = "机构代码"
 	,T1.saccount label = "业务号",
-	datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
+	datepart(dgetdate) as dgetdate label = "报送日期" format = yymmdd10.,
 	datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
 	datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.
 	,T1.dbillingdate  label = "结算应还款日期"
 	,T2.duploadtime label = "报文加载时间"
 	from &lib..sino_loan(where = (1=1 &timefilter. &orgfilter.)) as T1
-	left join nfcs.sino_msg as T2
+	left join &lib..sino_msg as T2
 	on T1.SMSGFILENAME = T2.SMSGFILENAME 
 	where T2.duploadtime is not null and datepart(T1.ddateopened) > datepart(duploadtime) or datepart(T1.ddateopened) < mdy(1,1,1990)
 	order by sorgcode,saccount,dbillingdate
@@ -941,15 +858,14 @@ quit;
 /*怀疑*/
 proc sql;
 	create table rule_31 as select
-	T1.sorgcode label = "机构代码"
-	,T1.sname label = '姓名'
+	T1.sname label = '姓名'
 	,T1.scerttype label = '证件类型'
 	,T1.scertno label = '证件号码'
 	,T1.spin
 	,T2.dbirthday label = '出生日期'
-	from nfcs.sino_person_certification as T1
-	left join nfcs.sino_person as T2
-	on T1.spin = T2.spin and T1.sorgcode = T2.sorgcode
+	from &lib..sino_person_certification as T1
+	left join &lib..sino_person as T2
+	on T1.spin = T2.spin
 	where T2.dbirthday <= mdy(1,1,1935) or T2.dbirthday > mdy(1,1,2005)
 ;
 quit;
@@ -971,9 +887,9 @@ PROC SQL;
 	,T1.scerttype label = '证件类型'
 	,T1.scertno label = '证件号码'
 	,T2.dbirthday label = "出生日期"
-	FROM nfcs.sino_person_certification(where = (SUBSTR(SORGCODE,1,1)='Q' AND SORGCODE not in ('Q10152900H0000' 'Q10152900H0001'))) AS T1
-	left JOIN nfcs.sino_person AS T2
-	ON T1.spin = T2.spin and T1.sorgcode = T2.sorgcode
+	FROM &lib..sino_person_certification(where = (SUBSTR(SORGCODE,1,1)='Q' AND SORGCODE not in ('Q10152900H0000' 'Q10152900H0001'))) AS T1
+	left JOIN &lib..sino_person AS T2
+	ON T1.spin = T2.spin
 	where length(SCERTNO)=18 and MDY(input(SUBSTR(SCERTNO,11,2),2.),input(SUBSTR(SCERTNO,13,2),2.),input(SUBSTR(SCERTNO,7,4),4.)) ^= DATEPART(dbirthday) and scerttype ='0' and DBIRTHDAY is not null
 	order by scertno
 ;
@@ -983,53 +899,8 @@ data rule_32;
 	if scertno = lag(scertno) then delete;
 run;
 
-*Rule 33
-/*错误*/
-校验24月还款状态的正确性
-;
 
-data rule_33_t;
-	set &lib..sino_loan(keep = iid SPAYSTAT24MONTH );
-	SPAYSTAT_flag = 0;
-	array SPAYSTAT{*} $1. X1-X24;
-	do i =1 to 24;
-	SPAYSTAT{i} = substr(SPAYSTAT24MONTH,i,1);
-	end;
-/*24月还款状态出现跳位的情况*/
-	do j =2 to 24;
-	if 1 <= input(SPAYSTAT{j-1},1.) <=7 and input(SPAYSTAT{j},1.) not in ('C' 'G') 
-	and input(SPAYSTAT{j},1.) - input(SPAYSTAT{j-1},1.) > 1 then SPAYSTAT_flag = 1;
-	else if SPAYSTAT{j-1} in ('N' '*' '/') and input(SPAYSTAT{j},1.) > 2 then SPAYSTAT_flag = 1;
-	end;
-drop
-i
-j
-X1-X24
-;
-run; 
 
-proc sql;
-	create table rule_33 as select
- 	   a.sorgcode label = "机构代码",
-	  	smsgfilename label = "报文名称",
-       a.saccount label = "业务号",
-	   	   scertno label = '证件号码' format = $18., 
-datepart(dgetdate) as dgetdate label = "加载日期" format = yymmdd10.,
-datepart(ddateopened) as ddateopened label = "开户日期" format = yymmdd10. informat = yymmdd10.,
-datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. informat = yymmdd10.,
-       a.sTermsfreq label = "还款频率",
-       a.dbillingdate label = "结算应还款日期",
-       a.ischeduledamount label = "本月应还款金额",
-       a.iactualpayamount label = "本月实际还款金额",
-	   a.iaccountstat   label = "账户状态",
-       a.sPaystat24month "二十四个月还款状态"
-	   from &lib..sino_loan(where = (1=1 &timefilter.)) as A
-	   left join rule_33_t as B
-	   on A.iid = B.iid
-	   where B.SPAYSTAT_flag = 1
-	;
-quit;
-	
 /*结果输出*/
 
 proc sql noprint;
@@ -1070,7 +941,7 @@ run;
 
 /*筛选时间段*/
 %macro timefilter;
-%do i = 1 %to 33;
+%do i = 1 %to 30;
 	data rule_&i.;
 		set rule_&i.(where = (dgetdate >= mdy(7,1,2013) and &firstday. > datepart(dbillingdate) >= &firstday_two.) );
 /*		if  &firstday. > datepart(dbillingdate) >= &firstday_two.;*/
@@ -1082,7 +953,7 @@ run;
 
 /*输出*/
 %macro outfile;
-%do i = 1 %to 33;
+%do i = 1 %to 32;
 	%do j = 1 %to &socnumber.;
 data work.&&sorgcode&j.;
 	set rule_&i.(where = (sorgcode = "%sysfunc(strip(&&sorgcode&j.))"));
@@ -1145,13 +1016,6 @@ data _null_;
 /*return;*/
 run;  
 %mend;  
-
-/*data _null_;*/
-/*x "@echo off*/
-/*net use \\137.168.99.116\ipc$ 1qaz2WSX /user.administrator";*/
-/*x 'xcopy  ';*/
-/*run;*/
-
 
 /*运行*/
 ods listing close;

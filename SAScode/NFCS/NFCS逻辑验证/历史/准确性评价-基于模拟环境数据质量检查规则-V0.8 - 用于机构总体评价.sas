@@ -1,27 +1,17 @@
-%include "E:/林佳宁/code/config.sas";
+%include "E:\新建文件夹\SAS\CONFIG.sas";
 /*libname nfcs "D:\数据\201602";*/
-proc sort data = nfcs.sino_loan(drop = sloantype sloancompactcode scurrency iclass5stat iinfoindicator skeepcolumn ipersonid smsgfilename ilineno stoporgcode ipbcstate WHERE=(SUBSTR(sorgcode,1,1)='Q' 
-and istate = 0 AND sorgcode not in ('Q10152900H0000','Q10152900H0001') and datepart(dgetdate) >= &firstday_three. and &firstday. > datepart(dbillingdate) >= &firstday_three.)) out = sino_loan;
-by iloanid dbillingdate descending dgetdate;
+proc sort data = nfcs.sino_loan(drop = sloantype SAREACODE dgetdate sloancompactcode scurrency iclass5stat iinfoindicator sname scerttype scertno skeepcolumn ipersonid smsgfilename ilineno stoporgcode istate ipbcstate WHERE=(SUBSTR(sorgcode,1,1)='Q' AND sorgcode not in ('Q10152900H0000','Q10152900H0001') and
+ &firstday. > datepart(dbillingdate) >= &firstday_two.)) out = sino_loan;
+by iloanid dbillingdate;
 run;
-/*%AddLabel(sino_loan);*/
+%AddLabel(sino_loan);
 data sino_loan;
-informat zhangqi yymmn6.;
-format zhangqi yymmn6.;
  set sino_loan;
  error_flag = 0;
  doubt_flag = 0;
- zhangqi = intnx('month',datepart(dbillingdate),0,'b');
-/*label*/
-/*	&label.*/
+label
+	&label.
 ;
-run;
-proc sort data = sino_loan;
-	by iloanid zhangqi descending dgetdate;
-run;
-data sino_loan;
-	set sino_loan;
-	if iloanid = lag(iloanid) and zhangqi = lag(zhangqi) then delete;
 run;
 /*Rule 1*/
 /*1、结清时，上报"结算应还款日期"是否取结清日（不一定是问题的情况：结清日与最后一次还款不在同一天）*/
@@ -123,8 +113,7 @@ run;
 /*错误*/
 data sino_loan;
  set sino_loan;
- if sPaystat24month ^= '///////////////////////*' and sTermsfreq = '03' and ischeduledamount=0 
-	and intnx('month',datepart(dbillingdate),0,'end') ^= intnx('month',datepart(ddateopened),0,'end') then error_flag = 1;
+ if sPaystat24month ^= '///////////////////////*' and sTermsfreq = '03' and ischeduledamount=0  then error_flag = 1;
 run;
 
 /*Rule 13*/
@@ -362,7 +351,7 @@ proc sort data = zqx_org;
 by desending record_cnt;
 run;
 
-/*ods listing off;*/
+ods listing off;
  ods tagsets.excelxp file = "&outfile.库中逻辑校验情况表_&currmonth..xls" style = printer
       options(sheet_name="库中逻辑校验情况表" embedded_titles='yes' embedded_footnotes='yes' sheet_interval="bygroup" frozen_headers='yes' frozen_rowheaders='1' autofit_height='yes');
 proc report data = zqx_org NOWINDOWS headline headskip

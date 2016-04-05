@@ -24,7 +24,10 @@ else call symput('STAT_OP',cat(put(year(today()),$4.),"年",put(month(intnx('mont
 /*call symput('START',intnx('month',today(),-2,'end'));*/
 /*call symput('END',intnx('month',today(),-1,'end'));*/
 run;
-
+data _null_;
+	call symput('curr_day',put(today(),yymmddn8.));
+run;
+%put &curr_day.;
 %put &curr_month.;
 %INCLUDE "C:\work\code\GitHub\movingwork\SAScode\000_FORMAT.sas";
 /*%include "C:\work\code\GitHub\movingwork\SAScode\基础宏.sas";*/
@@ -43,7 +46,7 @@ Libname crm1 odbc user=uperpcrm password=uperpcrm datasrc=crm;
 /*libname nfcs "D:/数据/&curr_month.";*/
 libname ccs oracle user=datauser password=r9ck01qi path=necs;
 /*137.168.98.51*/
-%let outfile = E:\林佳宁\逻辑校验结果\&curr_month.\;
+%let outfile = E:\林佳宁\逻辑校验结果\&curr_day.\;
 libname dw "D:\数据\dw";
 
 /*数据服务器*/
