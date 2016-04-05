@@ -1,8 +1,8 @@
 %include "E:/林佳宁/code/config.sas";
 %let lib = %str(work);
 /*%let orgfilter = %nrstr(and sorgcode in ('Q10151000H3000' 'Q10152900H0900'));*/
-%let orgfilter = %nrstr(and sorgcode in ('Q10152900H9800' 'Q10151000H8800' 'Q10152900H1D00' 'Q10152900HT400' 'Q10153300HDW00' 'Q10152900HFJ00' 'Q10152900H2Z00' 'Q10152900H1W00' 'Q10152900H8500' 'Q10152900H0900' 'Q10151000H3000' 'Q10152900HN500' 'Q10152900HAZ00' 'Q10152900H1200' 'Q10152900H1W00' 'Q10153900H7T00' 'Q10152900HC000' 'Q10151000H0G00' 'Q10155800HZ200' 'Q10152900H9C00' 'Q10155800H2P00' 'Q10152900HAL00' 'Q10152900HN300' 'Q10155800H5400' 'Q10152900H3500' 'Q10155800HCV00'
-'Q10155800HS000' 'Q10152900H1400' 'Q10151000H0Y00' 'Q10152900HD900' 'Q10155800H3200' 'Q10152900H0900' 'Q10152900HU700' 'Q10151000H2800' 'Q10152900H7C00' 'Q10155800H6800' 'Q10151000HV200'));
+%let orgfilter = %nrstr(and sorgcode in (/*'Q10152900H0900' 'Q10151000H3000' 'Q10152900HN500' 'Q10152900HAZ00' 'Q10152900H1200' 'Q10152900H1W00' 'Q10153900H7T00' 'Q10152900HC000' */'Q10151000H0G00'/* 'Q10155800HZ200' 'Q10152900H9C00' 'Q10155800H2P00' 'Q10152900HAL00' 'Q10152900HN300' 'Q10155800H5400' 'Q10152900H3500' 'Q10155800HCV00'
+'Q10155800HS000' 'Q10152900H1400' 'Q10151000H0Y00' 'Q10152900HD900' 'Q10155800H3200' 'Q10152900H0900' 'Q10152900HU700' 'Q10151000H2800' 'Q10152900H7C00' 'Q10155800H6800' 'Q10151000HV200'*/));
 data _null_;
 	if %sysfunc(length(&orgfilter.)) = 0 then orgfilter = " ";
 run;
@@ -668,11 +668,10 @@ proc sql;
 	create table sino_loan_1 as select
 		substr(sorgcode,1,14) as sorgcode
 		,saccount
-		,scertno
 		,intnx('month',datepart(DDATEOPENED),0,'b') as omonth FORMAT=yymmn6. INFORMAT=yymmn6.
 		,intnx('month',datepart(DDATECLOSED),0,'b') as cmonth FORMAT=yymmn6. INFORMAT=yymmn6.
 		,intnx('month',datepart(DBILLINGDATE),0,'b') as dmonth FORMAT=yymmn6. INFORMAT=yymmn6.
-	from &lib..sino_loan(keep = scertno SORGCODE saccount dgetdate DDATEOPENED DDATECLOSED DBILLINGDATE iaccountstat where=(sorgcode like 'Q%' and datepart(DBILLINGDATE) < today() and iaccountstat in (1,2) &timefilter. &orgfilter.))
+	from &lib..sino_loan(keep = SORGCODE saccount dgetdate DDATEOPENED DDATECLOSED DBILLINGDATE iaccountstat where=(sorgcode like 'Q%' and datepart(DBILLINGDATE) < today() and iaccountstat in (1,2) &timefilter. &orgfilter.))
 	order by saccount,dmonth
 ;
 quit;
@@ -684,10 +683,9 @@ proc sql;
 	create table sorgcodesaccount_ as select
 		sorgcode
 		,saccount
-		,scertno
 		,intnx('month',datepart(DDATEOPENED),0,'b') as omonth FORMAT=yymmn6. INFORMAT=yymmn6.
 		,intnx('month',datepart(DDATECLOSED),0,'b') as cmonth FORMAT=yymmn6. INFORMAT=yymmn6.
-	from &lib..sino_loan(keep = scertno SORGCODE saccount dgetdate DDATEOPENED DDATECLOSED DBILLINGDATE iaccountstat where=(sorgcode like 'Q%' and datepart(DBILLINGDATE) < today() and iaccountstat in (1,2)))
+	from &lib..sino_loan(keep = SORGCODE saccount dgetdate DDATEOPENED DDATECLOSED DBILLINGDATE iaccountstat where=(sorgcode like 'Q%' and datepart(DBILLINGDATE) < today() and iaccountstat in (1,2)))
 ;
 quit;
 
@@ -699,7 +697,6 @@ proc sql;
 	create table sino_loan_2 as select 
 		Sorgcodesaccount_.SORGCODE
 		,Sorgcodesaccount_.saccount
-		,sorgcodesaccount_.scertno
 		,Sorgcodesaccount_.omonth
 		,Sorgcodesaccount_.cmonth
 		,dmonth.dmonth
@@ -724,7 +721,6 @@ proc sql;
 	create table rule_25 as select
 		t1.sorgcode label='机构代码'
 		,t1.saccount label='业务号'
-		,t1.scertno label = '证件号码'
 		,t1.omonth label='贷款业务开立月份'
 		,t1.cmonth label='贷款业务终止月份'
 		,t1.dmonth label='未入库账期'

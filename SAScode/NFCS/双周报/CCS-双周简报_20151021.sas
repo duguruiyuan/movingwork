@@ -1,5 +1,5 @@
-%include "E:/新建文件夹/SAS/config.sas";
-%let enddate = %sysfunc(mdy(2,29,2016));
+%include "E:\林佳宁\code\GitHub\movingwork\SAScode\config.sas";
+%let enddate = %sysfunc(mdy(3,31,2016));
 %put x= &enddate.;
 
 /*libname ccs "D:\数据\CCS\&curr_month.";*/
@@ -82,7 +82,7 @@ proc sql;
 ;
 quit;
 
-libname xls excel "E:\新建文件夹\SAS\常用代码\自动化\结果文件夹\双周报结果\CCS\CCS双周简报_&curr_month..xls";
+libname xls excel "E:\林佳宁\笔记\工作笔记\CREDIT\公共资料\SAS代码\CCS\结果文件夹\双周报结果\CCS双周简报_&curr_month..xls";
 data xls.sheet1(dblabel = yes);
 set CCS_OPT_2W;
 run;

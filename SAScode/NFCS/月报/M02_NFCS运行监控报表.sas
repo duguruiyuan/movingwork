@@ -1,5 +1,5 @@
 /*libname nfcs "D:\数据\201602";*/
-%include "E:\新建文件夹\SAS\config.sas";
+%include "E:\林佳宁\code\GitHub\movingwork\SAScode\config.sas";
 
 proc sql;
 	create table nfcs_op as select
@@ -133,7 +133,7 @@ proc template;
 run;
 
 ods listing off;
- ods tagsets.excelxp file="E:\新建文件夹\SAS\常用代码\自动化\结果文件夹\月报结果\&curr_month.\NFCS系统运行情况报表_&STAT_OP..xls" style = printer
+ ods tagsets.excelxp file="E:\林佳宁\笔记\工作笔记\CREDIT\公共资料\SAS代码\NFCS\结果文件夹\月报结果\&curr_month.\NFCS系统运行情况报表_&STAT_OP..xls" style = printer
       options(sheet_name="NFCS系统运行情况报表" embedded_titles='yes' embedded_footnotes='yes' sheet_interval="bygroup" frozen_headers='yes' frozen_rowheaders='1' autofit_height='yes');
 proc report data = _nfcs_op NOWINDOWS headline headskip
           style(header)={background=lightgray foreground=black  JUST = center VJUST = center fontweight = bold};

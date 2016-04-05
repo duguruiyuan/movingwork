@@ -1,8 +1,7 @@
 options compress=yes mprint mlogic noxwait;
 /*libname nfcs oracle user=datauser password=zlxdh7jf path=p2p;*/
-libname nfcs "D:\数据\201512";
-%INCLUDE "E:\新建文件夹\SAS\常用代码\自动化\000_FORMAT.sas";
-%include "E:\新建文件夹\SAS\基础宏.sas";
+/*libname nfcs "D:\数据\201512";*/
+%include "E:\林佳宁\code\GitHub\movingwork\SAScode\config.sas";
 %FORMAT;
 
 %LET START=MDY(11,1,2015);
@@ -17,7 +16,12 @@ else if ismonth=1 then
 call symput('chkmonth',cat(put(year(today())-1,$4.),put(12,$2.)));
 else call symput('chkmonth',cat(put(year(today()),$4.),put(month(today()),$2.)));
 run;
+data _null_;
+	call symput('chklast',put(intnx('month',today(),-2,'e'),yymmn6.));
+run;
 %put x=&chkmonth.;
+%put x=&chklast.;
+
 
 /*data soc;*/
 /*	set soc;*/
@@ -378,7 +382,7 @@ quit;
 
 /*各专管员变动情况*/
 /*导入上月情况*/
-PROC IMPORT OUT= WORK.person_last DATAFILE= "E:\新建文件夹\SAS\常用代码\自动化\结果文件夹\月报结果\专管员\专管员情况统计表_201511.xlsx" DBMS=EXCEL REPLACE;
+PROC IMPORT OUT= WORK.person_last DATAFILE= "E:\林佳宁\笔记\工作笔记\CREDIT\公共资料\SAS代码\NFCS\结果文件夹\月报结果\专管员\专管员情况统计表_&chklast..xlsx" DBMS=EXCEL REPLACE;
      SHEET="本月专管员指标情况"; 
      GETNAMES=YES;
      MIXED=NO;
@@ -418,7 +422,7 @@ proc sql;
 ;
 quit;
 
-libname xls excel "E:\新建文件夹\SAS\常用代码\自动化\结果文件夹\月报结果\专管员\专管员情况统计表_&chkmonth..xlsx";
+libname xls excel "E:\林佳宁\笔记\工作笔记\CREDIT\公共资料\SAS代码\NFCS\结果文件夹\月报结果\专管员\专管员情况统计表_&chkmonth..xlsx";
 data xls.各机构情况(dblabel = yes);
 set org_curr;
 run;

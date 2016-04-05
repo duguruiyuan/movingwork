@@ -9,14 +9,14 @@ call symput('chkmonth',cat(put(year(today())-1,$4.),put(12,$2.)));
 else call symput('chkmonth',cat(put(year(today()),$4.),put(month(today()),$2.)));
 run;
 %put x=&chkmonth.;
-libname nfcs "D:\数据\&chkmonth.\";
-
+/*libname nfcs "D:\数据\&chkmonth.\";*/
+%include "E:\林佳宁\code\GitHub\movingwork\SAScode\config.sas";
 /*根据当前日期，自动生成STAT_OP END START 已验证 2015.03.02 更新人：李楠 可先在日志中观察结果后再使用*/
-%INCLUDE "E:\新建文件夹\SAS\常用代码\自动化\000_FORMAT.sas";
-%include "E:\新建文件夹\SAS\基础宏.sas";
-%format;
-%let enddate = mdy(11,30,2015);
-%chkfile(E:\新建文件夹\SAS\常用代码\自动化\结果文件夹\双周报结果\&chkmonth.);
+/*%INCLUDE "E:\新建文件夹\SAS\常用代码\自动化\000_FORMAT.sas";*/
+/*%include "E:\新建文件夹\SAS\基础宏.sas";*/
+/*%format;*/
+%let enddate = mdy(3,31,2016);
+%chkfile(E:\林佳宁\笔记\工作笔记\CREDIT\公共资料\SAS代码\NFCS\结果文件夹\双周报结果\&chkmonth.);
 /*人数*/
 PROC SQL;
 	CREATE TABLE zkb_renshu AS SELECT
@@ -255,7 +255,7 @@ proc sql;
 quit;
 
 
-libname xls excel "E:\新建文件夹\SAS\常用代码\自动化\结果文件夹\双周报结果\&chkmonth.\双周简报附表_&chkmonth..xlsx";
+libname xls excel "E:\林佳宁\笔记\工作笔记\CREDIT\公共资料\SAS代码\NFCS\结果文件夹\双周报结果\&chkmonth.\双周简报附表_&chkmonth..xlsx";
 	data xls.'汇总表'n(dblabel=yes);
 	set _zkb;
 RUN;
