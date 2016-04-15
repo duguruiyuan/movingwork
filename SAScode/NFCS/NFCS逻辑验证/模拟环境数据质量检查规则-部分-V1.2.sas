@@ -97,7 +97,7 @@ datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. infor
        t.iactualpayamount label = "本月实际还款金额",
        t.iaccountstat   label = "账户状态",
        t.sPaystat24month label = "二十四月还款状态"
-  from &lib..sino_loan(where = (dbillingdate ^= drecentpaydate and iaccountstat not in (1,2) and dgetdate >= mdy(7,1,2013) &orgfilter.)) as t
+  from &lib..sino_loan(where = (dbillingdate ^= drecentpaydate and iaccountstat not in (1,2) and dgetdate >= mdy(7,1,2013) &orgfilter. &timefilter.)) as t
 ;
 quit;
 
@@ -1217,4 +1217,4 @@ ods listing;
 ods results on;
 ODS TRACE ON;
 %include 'E:\林佳宁\code\数据质量\准确性评价-基于模拟环境数据质量检查规则-V0.9 - 用于机构总体评价.sas';
-x 'robocopy E:\林佳宁\逻辑校验结果 \\137.168.99.116\逻辑校验结果 /e';
+/*x 'robocopy E:\林佳宁\逻辑校验结果 \\137.168.99.116\逻辑校验结果 /e';*/

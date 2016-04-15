@@ -60,6 +60,7 @@ call symputx('firstday',intnx("month",%sysfunc(today()),0,'b'));
 call symputx('firstday_one',intnx("month",%sysfunc(today()),-1,'b'));
 call symputx('firstday_two',intnx("month",%sysfunc(today()),-2,'b'));
 call symputx('firstday_three',intnx("month",%sysfunc(today()),-3,'b'));
+call symputx('begin',mdy(12,1,2015));
 run;
 
 /*加入筛选时间*/
