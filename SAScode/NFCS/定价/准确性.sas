@@ -260,30 +260,30 @@ run;
 /*	if sorgcode = lag(sorgcode) then delete;*/
 /*run;*/
 /*输出*/
-/*proc sql;*/
-/*	create table zqx_org as select*/
-/*	T2.shortname label = "机构简称"*/
-/*	,T2.person*/
-/*/*	,sum(1,- sum(doubt_flag)/count(*)) as doubt_per label = "各机构准确率-怀疑" format = percent8.2 informat = percent8.2 */*/
-/*	,count(T1.sorgcode) as record_cnt label = "贷款业务记录条数"*/
-/*	,sum(t1.error_flag) as record_cnt_error label = "触发错误类规则记录条数"*/
-/*	,1 - calculated record_cnt_error/calculated record_cnt as error_per label = "准确率" format = percent8.2 informat = percent8.2*/
-/*	,T2.total*/
-/*	,t2.in_nfcs*/
-/*	,T2.in_per*/
-/*	from sino_loan as T1*/
-/*	left join _loan_m_sta_ as T2*/
-/*	on T1.sorgcode = T2.sorgcode*/
-/*	group by T1.sorgcode*/
-/*;*/
-/*quit;*/
-/*data zqx_org;*/
-/*	set zqx_org;*/
-/*	if shortname = lag(shortname) then delete;*/
-/*run;*/
-/*proc sort data = zqx_org;*/
-/*by desending record_cnt;*/
-/*run;*/
+proc sql;
+	create table zqx_org as select
+	T2.shortname label = "机构简称"
+	,T2.person
+/*	,sum(1,- sum(doubt_flag)/count(*)) as doubt_per label = "各机构准确率-怀疑" format = percent8.2 informat = percent8.2 */
+	,count(T1.sorgcode) as record_cnt label = "贷款业务记录条数"
+	,sum(t1.error_flag) as record_cnt_error label = "触发错误类规则记录条数"
+	,1 - calculated record_cnt_error/calculated record_cnt as error_per label = "准确率" format = percent8.2 informat = percent8.2
+	,T2.total
+	,t2.in_nfcs
+	,T2.in_per
+	from sino_loan as T1
+	left join _loan_m_sta_ as T2
+	on T1.sorgcode = T2.sorgcode
+	group by T1.sorgcode
+;
+quit;
+data zqx_org;
+	set zqx_org;
+	if shortname = lag(shortname) then delete;
+run;
+proc sort data = zqx_org;
+by desending record_cnt;
+run;
 /**/
 /*/*ods listing off;*/*/
 /* ods tagsets.excelxp file = "&outfile.库中逻辑校验情况表_&currmonth..xls" style = printer*/

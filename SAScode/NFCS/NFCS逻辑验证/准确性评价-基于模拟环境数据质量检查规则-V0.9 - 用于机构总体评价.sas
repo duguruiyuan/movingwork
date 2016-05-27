@@ -1,4 +1,5 @@
 %include "C:\work\code\GitHub\movingwork\SAScode\config.sas";
+libname nfcs "C:\work\creditriskcard\data\DB160415001";
 libname nfcs "C:\work\creditriskcard\data\DB160201001\L0";
 data orgfile;
 	input sorgcode $28.;
@@ -56,7 +57,7 @@ run;
 %let NoteAddr = %unquote(%str(E:\林佳宁\code\数据质量\数据质量检查系统输出结果说明-V1.7.docx));
 data sino_loan_all;
 	set nfcs.sino_loan(
-		drop = sloantype sloancompactcode scurrency iclass5stat iinfoindicator skeepcolumn ipersonid ilineno stoporgcode ipbcstate 
+/*		drop = sloantype sloancompactcode scurrency iclass5stat iinfoindicator skeepcolumn ipersonid ilineno stoporgcode ipbcstate */
 		WHERE=(SUBSTR(sorgcode,1,1)='Q' 
 			and istate = 0 
 			AND sorgcode not in ('Q10152900H0000','Q10152900H0001')
@@ -1018,15 +1019,20 @@ run;
 data zqx_org;
 	merge zhunque jishi;
 	by sorgcode;
+	keep sorgcode err_num _freq_ get all error_per in_per;
 	label
 		err_num='触发错误类规则记录条数'
 		_freq_='贷款业务记录条数'
-		rr='未入库业务数'
+		get='已入库业务数'
 		all='应入库业务数'
 		error_per='准确率'
 		in_per='及时率'
 	;
 run;
+proc sort data = zqx_org;
+by desending _freq_;
+run;
+
 /*Rule 26*/
 /*不同借款人使用同一贷款业务号的问题*/
 /*怀疑*/
@@ -1329,11 +1335,12 @@ proc sql;
 quit;
 data zqx_org;
 	set zqx_org;
-	if shortname = lag(shortname) then delete;
+	if sorgcode = lag(sorgcode) then delete;
 run;
 proc sort data = zqx_org;
 by desending record_cnt;
 run;
+%chkfile(&outfile.);
 
 /*ods listing off;*/
  ods tagsets.excelxp file = "&outfile.库中逻辑校验情况表_&currmonth..xls" style = printer
