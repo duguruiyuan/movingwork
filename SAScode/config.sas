@@ -29,9 +29,6 @@ data _null_;
 run;
 %put &curr_day.;
 %put &curr_month.;
-%INCLUDE "C:\work\code\GitHub\movingwork\SAScode\000_FORMAT.sas";
-/*%include "C:\work\code\GitHub\movingwork\SAScode\基础宏.sas";*/
-%FORMAT;
 /*%ChkFile(E:\新建文件夹\&chkmonth.\NFCS);*/
 
 options compress=yes mprint mlogic noxwait NOQUOTELENMAX;
@@ -48,6 +45,9 @@ libname ccs oracle user=datauser password=r9ck01qi path=necs;
 /*137.168.98.51*/
 %let outfile = E:\林佳宁\逻辑校验结果\&curr_day.\;
 libname dw "D:\数据\dw";
+%INCLUDE "E:/林佳宁/code/000_FORMAT.sas";
+%include "E:/林佳宁/code/基础宏.sas";
+%FORMAT;
 
 /*数据服务器*/
 /*137.168.99.116 admin 1qaz2WSX*/
@@ -60,9 +60,8 @@ call symputx('firstday',intnx("month",%sysfunc(today()),0,'b'));
 call symputx('firstday_one',intnx("month",%sysfunc(today()),-1,'b'));
 call symputx('firstday_two',intnx("month",%sysfunc(today()),-2,'b'));
 call symputx('firstday_three',intnx("month",%sysfunc(today()),-3,'b'));
-call symputx('begin',mdy(12,1,2015));
+call symputx('firstday_begin',%sysfunc(mdy(12,1,2015)));
 run;
-
 /*加入筛选时间*/
 %put &outfile.;
 %put &firstday.;

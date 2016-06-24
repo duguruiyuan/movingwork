@@ -15,7 +15,7 @@ run;
 /*%INCLUDE "E:\新建文件夹\SAS\常用代码\自动化\000_FORMAT.sas";*/
 /*%include "E:\新建文件夹\SAS\基础宏.sas";*/
 /*%format;*/
-%let enddate = mdy(3,31,2016);
+%let enddate = mdy(5,31,2016);
 %chkfile(E:\林佳宁\笔记\工作笔记\CREDIT\公共资料\SAS代码\NFCS\结果文件夹\双周报结果\&chkmonth.);
 /*人数*/
 PROC SQL;

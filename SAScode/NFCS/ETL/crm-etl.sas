@@ -2,7 +2,7 @@ libname crmlocal "D:\数据\crm1\201602";
 
 /*外部人工导入机构简称*/
 PROC IMPORT OUT= WORK.shortname 
-DATAFILE= "E:\新建文件夹\201603\NFCS\机构号及机构简称整理0229.xlsx" 
+DATAFILE= "E:\林佳宁\code\数据质量\机构号及机构简称整理0524.xlsx" 
 DBMS=EXCEL REPLACE;
 RANGE="Sheet1$"; 
 GETNAMES=NO;

@@ -5,7 +5,10 @@ data sino_dicttypeinfo;
 	set nfcs.sino_dicttypeinfo;
 run;
 data sino_org;
-	set nfcs.sino_org;
+	set nfcs.sino_org(where=(sorgcode like 'Q%' and SORGCODE^='Q10152900H0000' AND SORGCODE^='Q10152900H0001'));
+run;
+proc sort data=sino_org;
+	by stoporgcode;
 run;
 data shortname;
 	set crm1.T_contract_order(keep=SUB_ACCOUNT_ID CONTRACT_ORDER_SUBJECT CUSTOMER_NAME EXTEND1 EXTEND2);
@@ -41,4 +44,31 @@ data soc;
 	drop rc rc1 CUSTOMER_NAME;
 	rename extend2=shortname;
 run;
-
+proc sql;
+	create table config as select
+T1.*
+from soc as T1
+left join (select distinct sorgcode from nfcs.sino_msg) as T2
+on T1.sorgcode = T2.sorgcode
+where T2.sorgcode is not null
+order by person
+;
+quit;
+data SHORT_NM;
+	fmtname='$SHORT_NM';
+	set soc(keep=SORGNAME shortname rename=(sorgname=start shortname=label));
+run;
+proc format library=work cntlin=short_nm;
+run;
+data SHORT_CD;
+	fmtname='$SHORT_CD';
+	set soc(keep=sorgcode shortname rename=(sorgcode=start shortname=label));
+run;
+proc format library=work cntlin=short_cd;
+run;
+data ORGAREA_CD;
+	fmtname='$ORGAREA_CD';
+	set soc(keep=sorgcode SPROVINCENAME rename=(sorgcode=start SPROVINCENAME=label));
+run;
+proc format library=work cntlin=ORGAREA_CD;
+run;
