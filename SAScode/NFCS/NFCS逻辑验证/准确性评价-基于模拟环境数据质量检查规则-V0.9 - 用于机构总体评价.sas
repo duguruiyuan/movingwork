@@ -1,7 +1,7 @@
 %include "E:/ÁÖ¼ÑÄş/code/config.sas";
 /*libname nfcs "D:\Êı¾İ\201602";*/
 proc sort data = nfcs.sino_loan(drop = sloantype sloancompactcode scurrency iclass5stat iinfoindicator skeepcolumn ipersonid smsgfilename ilineno stoporgcode ipbcstate WHERE=(SUBSTR(sorgcode,1,1)='Q' 
-and istate = 0 AND sorgcode not in ('Q10152900H0000','Q10152900H0001') and datepart(dgetdate) >= &firstday_three. and &firstday. > datepart(dbillingdate) >= &firstday_three.)) out = sino_loan;
+and istate = 0 AND sorgcode not in ('Q10152900H0000','Q10152900H0001') and datepart(dgetdate) >= &firstday_begin. and &firstday. > datepart(dbillingdate) >= &firstday_begin.)) out = sino_loan;
 by iloanid dbillingdate descending dgetdate;
 run;
 /*%AddLabel(sino_loan);*/
