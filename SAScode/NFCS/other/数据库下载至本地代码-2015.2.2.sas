@@ -1,5 +1,5 @@
 /*参数配置，仅需将8月全量替换成其他即可，但前提是先在“E：\数据”文件夹中新建一个相同名字的文件夹*/
-%LET DATAPATH=E:\数据\NFCS数据;
+%LET DATAPATH=D:\work\creditriskcard\data\DB160530001;
 LIBNAME SSS "&DATAPATH.";
 /*连接Oracle数据库*/
 options compress=yes mprint mlogic noxwait;
