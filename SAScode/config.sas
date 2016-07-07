@@ -29,6 +29,12 @@ data _null_;
 run;
 %put &curr_day.;
 %put &curr_month.;
+<<<<<<< HEAD
+=======
+%INCLUDE "C:\work\code\GitHub\movingwork\SAScode\000_FORMAT.sas";
+%include "C:\work\code\GitHub\movingwork\SAScode\基础宏.sas";
+%FORMAT;
+>>>>>>> origin/Lenny-pc
 /*%ChkFile(E:\新建文件夹\&chkmonth.\NFCS);*/
 
 options compress=yes mprint mlogic noxwait NOQUOTELENMAX;
@@ -43,7 +49,7 @@ Libname crm1 odbc user=uperpcrm password=uperpcrm datasrc=crm;
 /*libname nfcs "D:/数据/&curr_month.";*/
 libname ccs oracle user=datauser password=r9ck01qi path=necs;
 /*137.168.98.51*/
-%let outfile = E:\林佳宁\逻辑校验结果\&curr_day.\;
+%let outfile = C:\work\temp\逻辑校验结果\&curr_day.\;
 libname dw "D:\数据\dw";
 %INCLUDE "E:/林佳宁/code/000_FORMAT.sas";
 %include "E:/林佳宁/code/基础宏.sas";
@@ -67,7 +73,7 @@ run;
 %put &firstday.;
 %put &firstday_two.;
 /*导入机构名称、简称、专管员映射关系*/
-PROC IMPORT OUT= WORK.soc DATAFILE= "E:/林佳宁/code/数据质量/soc.xlsx" DBMS=EXCEL REPLACE;
+PROC IMPORT OUT= WORK.soc DATAFILE= "C:\work\code\GitHub\movingwork\SAScode\NFCS\NFCS逻辑验证\soc.xlsx" DBMS=EXCEL REPLACE;
      SHEET="sheet1$"; 
      GETNAMES=YES;
      MIXED=NO;
