@@ -4,6 +4,12 @@
 data orgfile;
 	input sorgcode $28.;
 	cards;
+Q10152900H6K00
+Q10155800HJL00
+Q10152900H4J00
+Q10152900H9500
+Q10152900H5E00
+Q10151000H0G00
 Q10152900H9800
 Q10151000H8800
 Q10152900H1D00
@@ -21,7 +27,6 @@ Q10152900H1200
 Q10152900H1W00
 Q10153900H7T00
 Q10152900HC000
-Q10151000H0G00
 Q10155800HZ200
 Q10152900H9C00
 Q10155800H2P00
@@ -31,7 +36,6 @@ Q10155800H5400
 Q10152900H3500
 Q10155800HCV00
 Q10155800HS000
-Q10152900H1400
 Q10151000H0Y00
 Q10152900HD900
 Q10155800H3200
@@ -41,6 +45,9 @@ Q10151000H2800
 Q10152900H7C00
 Q10155800H6800
 Q10151000HV200
+Q10152900H1I00
+Q10151000HR100
+Q10152900H6500
 ;
 run;
 
@@ -53,8 +60,8 @@ quit;
 data _null_;
 	if %sysfunc(length(&orgfilter.)) = 0 then orgfilter = " ";
 run;
-%let timefilter = %str(and dgetdate >= &firstday_three. and &firstday. > datepart(dbillingdate) >= &firstday_three.);
-%let NoteAddr = %unquote(%str(E:\林佳宁\code\数据质量\数据质量检查系统输出结果说明-V1.7.docx));
+%let timefilter = %str(and datepart(dgetdate) >= &firstday_begin. and &firstday. > datepart(dbillingdate) >= &firstday_begin.);
+%let NoteAddr = %unquote(%str(E:\林佳宁\code\数据质量\数据质量检查系统输出结果说明-V1.8.docx));
 
 /*建立本期文件夹*/
 /*写成宏*/
@@ -725,21 +732,28 @@ proc sql;
 quit;
 data sino_loan_1;
 	set sino_loan_1;
-	if saccount = lag(saccount) and dmonth = lag(dmonth) then delete;
+	if sorgcode=lag(sorgcode) and saccount = lag(saccount) and dmonth = lag(dmonth) then delete;
 run;
 proc sql;
 	create table sorgcodesaccount_ as select
 		sorgcode
 		,saccount
 		,scertno
+		,iaccountstat
 		,intnx('month',datepart(DDATEOPENED),0,'b') as omonth FORMAT=yymmn6. INFORMAT=yymmn6.
 		,intnx('month',datepart(DDATECLOSED),0,'b') as cmonth FORMAT=yymmn6. INFORMAT=yymmn6.
-	from &lib..sino_loan(keep = scertno SORGCODE saccount dgetdate DDATEOPENED DDATECLOSED DBILLINGDATE iaccountstat where=(sorgcode like 'Q%' and datepart(DBILLINGDATE) < today() and iaccountstat in (1,2)))
+	from &lib..sino_loan(keep = scertno SORGCODE saccount dgetdate DDATEOPENED DDATECLOSED DBILLINGDATE IACCOUNTSTAT where=(sorgcode like 'Q%' and datepart(DBILLINGDATE) < today() &orgfilter.))
 ;
 quit;
 
-proc sort in=sorgcodesaccount_ nodupkey;
+proc sort in=sorgcodesaccount_;
 by sorgcode saccount;
+run;
+data sorgcodesaccount_;
+	set sorgcodesaccount_;
+	by sorgcode saccount;
+	if last.saccount;
+	if iaccountstat ne 3;
 run;
 
 proc sql;
@@ -783,6 +797,7 @@ proc sql;
 		where t2.dmonth is null
 ;
 quit;
+
 
 /*Rule 26*/
 /*不同借款人使用同一贷款业务号的问题*/
@@ -1076,9 +1091,116 @@ datepart(ddateclosed) as ddateclosed label = "到期日期" format = yymmdd10. infor
 	   where B.SPAYSTAT_flag = 1
 	;
 quit;
-	
+/*rule_34*/
+/*账户状态不为结清，24月还款状态中不能有C*/
+data rule_34;
+	set sino_loan(
+		where=(
+			iaccountstat ne 3
+			and sPaystat24month like '%C%'
+			&timefilter.
+		)
+	);
+	keep iaccountstat sorgcode saccount ddateopened ddateclosed dbillingdate sPaystat24month;
+	label
+		sorgcode='机构代码'
+		saccount='业务号'
+		ddateopened='开户日期'
+		ddateclosed='到期日期'
+		dbillingdate='结算应还款日期'
+		sPaystat24month='二十四月还款状态'
+		iaccountstat='账户状态'
+	;
+run;
+/*rule_35*/
+/*贷款24月还款状态不能有多个C*/
+data rule_35;
+	set sino_loan(
+		where=(
+			sPaystat24month like '%C%C%'
+			&timefilter.
+		)
+	);
+	keep sorgcode saccount ddateopened ddateclosed dbillingdate sPaystat24month;
+	label
+		sorgcode='机构代码'
+		saccount='业务号'
+		ddateopened='开户日期'
+		ddateclosed='到期日期'
+		dbillingdate='结算应还款日期'
+		sPaystat24month='二十四月还款状态'
+	;
+run;
+/*rule_36*/
+/*贷款到期后且逾期，本月应还款金额为0或实际还款金额大于等于本月应还款金额(确认本月应还款金额)*/
+data rule_36;
+	set sino_loan(
+		where=(
+			intnx('month',datepart(ddateclosed),0,'b') lt intnx('month',datepart(dbillingdate),0,'b')
+			and iaccountstat eq 2
+			and (ISCHEDULEDAMOUNT eq 0 or ISCHEDULEDAMOUNT le IACTUALPAYAMOUNT)
+			&timefilter.
+		)
+	);
+	keep iaccountstat sorgcode saccount ddateopened ddateclosed dbillingdate ISCHEDULEDAMOUNT IACTUALPAYAMOUNT;
+	label
+		sorgcode='机构代码'
+		saccount='业务号'
+		ddateopened='开户日期'
+		ddateclosed='到期日期'
+		dbillingdate='结算应还款日期'
+		iaccountstat='账户状态'
+		ISCHEDULEDAMOUNT='本月应还款金额'
+		IACTUALPAYAMOUNT='实际还款金额'
+	;
+run;
+/*rule_37*/
+/*当贷款结清时，实际还款金额不应为0（特殊情况除外）*/
+data rule_37;
+	set sino_loan(
+		where=(
+			iaccountstat eq 3
+			and IACTUALPAYAMOUNT eq 0
+			&timefilter.
+		)
+	);
+	keep dgetdate iaccountstat sorgcode saccount ddateopened ddateclosed dbillingdate ISCHEDULEDAMOUNT IACTUALPAYAMOUNT;
+	label
+		dgetdate='加载日期'
+		sorgcode='机构代码'
+		saccount='业务号'
+		ddateopened='开户日期'
+		ddateclosed='到期日期'
+		dbillingdate='结算应还款日期'
+		iaccountstat='账户状态'
+		ISCHEDULEDAMOUNT='本月应还款金额'
+		IACTUALPAYAMOUNT='实际还款金额'
+	;
+run;
+/*rule_38*/
+/*24月还款状态最后一位是N时，最近一次实际还款日期和结算应还款日期应在同一结算周期内*/
+data rule_38;
+	set sino_loan(
+		where=(
+			substr(sPaystat24month,24,1) eq 'N'
+			and intnx('month',datepart(dbillingdate),-1,'s') gt datepart(drecentpaydate)
+			&timefilter.
+		)
+	);
+	keep dgetdate sorgcode saccount ddateopened ddateclosed dbillingdate drecentpaydate sPaystat24month;
+	label
+		dgetdate='加载日期'
+		sorgcode='机构代码'
+		saccount='业务号'
+		ddateopened='开户日期'
+		ddateclosed='到期日期'
+		dbillingdate='结算应还款日期'
+		drecentpaydate='最近一次还款日期'
+		sPaystat24month='24月还款状态'
+	;
+run;
 /*结果输出*/
-
+;
 proc sql noprint;
 	select count(distinct sorgcode) into :socnumber
 	from config(where = (1=1 &orgfilter.))
@@ -1117,7 +1239,7 @@ run;
 
 /*筛选时间段*/
 %macro timefilter;
-%do i = 1 %to 33;
+%do i = 1 %to 38;
 	data rule_&i.;
 		set rule_&i.(where = (dgetdate >= mdy(7,1,2013) and &firstday. > datepart(dbillingdate) >= &firstday_two.) );
 /*		if  &firstday. > datepart(dbillingdate) >= &firstday_two.;*/
@@ -1129,7 +1251,7 @@ run;
 
 /*输出*/
 %macro outfile;
-%do i = 1 %to 33;
+%do i = 1 %to 38;
 	%do j = 1 %to &socnumber.;
 data work.&&sorgcode&j.;
 	set rule_&i.(where = (sorgcode = "%sysfunc(strip(&&sorgcode&j.))"));
@@ -1217,4 +1339,6 @@ ods listing;
 ods results on;
 ODS TRACE ON;
 %include 'E:\林佳宁\code\数据质量\准确性评价-基于模拟环境数据质量检查规则-V0.9 - 用于机构总体评价.sas';
-/*x 'robocopy E:\林佳宁\逻辑校验结果 \\137.168.99.116\逻辑校验结果 /e';*/
+x 'explorer';
+x 'ping 137.168.99.116 -n 5';
+x 'robocopy E:\林佳宁\逻辑校验结果 \\137.168.99.116\逻辑校验结果 /e';
