@@ -1,152 +1,25 @@
-options compress=yes nomprint nomlogic noxwait;
-%macro gettime;
-	%global TODAY GETEND GETSTART INFOEND INFOSTART START_THREE;
-	%let TODAY=%sysfunc(today());
-	%if %sysfunc(weekday(&TODAY.)) eq 1 %then %do;
-		%let GETSTART=%sysfunc(intnx(day,&TODAY.,-1,e));
-	%end;
-	%else %do;
-		%if %sysfunc(day(&today.)) gt 15 %then %do;
-			%let GETSTART=%sysfunc(intnx(month,&TODAY.,0,b));
-		%end;
-		%else %do;
-			%let GETSTART=%sysfunc(intnx(month,&TODAY.,-1,b));
-		%end;
-	%end;
-	%let INFOSTART=%sysfunc(intnx(month,&GETSTART.,-1,b));
-	%let INFOEND=%sysfunc(intnx(month,&GETSTART.,-1,e));
-	%let GETEND=%sysfunc(intnx(month,&GETSTART.,0,e));
-	%let START_THREE=%sysfunc(intnx(month,&GETSTART.,-2,b));
-%mend gettime;
-%gettime;
-%include "\\137.168.99.116\code\config.sas";
+/*根据当前日期，自动生成STAT_OP END START 已验证 2015.03.02 更新人：李楠 可先在日志中观察结果后再使用*/
+/*更新时间 2015-5-4 更新人：李楠*/
+/*更新时间 20160227 更新人：李楠 更新内容：将输出方式改为ods+proc report*/
+/*注意修改时间段;*/
+%LET END=MDY(8,4,2016);
+%LET START=MDY(7,1,2016);
+%LET START_THREE = intnx('month',&START.,-2,'b');
+%put &STAT_OP.;
+%put &START.;
+%put &END.;
+%put &START_THREE.;
+%put &curr_month.;
+%include "E:\林佳宁\code\config.sas";
 %ChkFile(E:\林佳宁\笔记\工作笔记\CREDIT\公共资料\SAS代码\NFCS\结果文件夹\月报结果\&curr_month.);
-libname nfcs '\\137.168.99.116\nfcs\月底数据备份\NFCS20160901';
-/*下载数据*/
-%let w=datepart(dgetdate) le &END.;
-%getds(inlib=nfcs,ds=sino_org,out=org);
-%getds(inlib=nfcs,ds=sino_loan_apply,keep=SORGCODE SAPPLYCODE DGETDATE ISTATE ddate,out=apply,where=&w.);
-%getds(inlib=nfcs,ds=sino_loan,keep=SORGCODE iloanid dbillingdate DGETDATE istate,out=loan,where=&w.);
-%getds(inlib=nfcs,ds=sino_person,keep=sorgcode ipersonid DGETDATE istate,out=person,where=&w.);
-%getds(inlib=nfcs,ds=sino_loan_spec_trade,keep=SORGCODE SACCOUNT DOCCURDATE dgetdate istate,out=spec,where=&w.);
-%let w=datepart(duploadtime) le &END.;
-%getds(inlib=nfcs,ds=sino_msg,out=msg,where=&w.);
-%let w=datepart(dcreatetime) le &END.;
-%getds(inlib=nfcs,ds=sino_credit_record,keep=sorgcode dcreatetime IREQUESTTYPE,out=record,where=&w.);
-%let w=istate eq 1;
-%getds(inlib=nfcs,ds=sino_credit_orgplate,out=orgplate,where=&w.);
-%let w=getrecord eq 1;
-%getds(ds=record,out=GetRecord,where=&w.);
-%macro TMonth(ds=,date=,keyvars=,sortvars=,gdate=,first=);
-	%sortds(ds=&ds.,vars=&keyvars. &sortvars.);
-	%let lastkey=%scan(&keyvars.,-1,%str( ));
-	%if &gdate eq %str() %then %let gdate=dgetdate;
-	data &ds.first;
-		set &ds.;
-		by &keyvars. &sortvars.;
-		%if &first. eq %str() %then %do;
-			if first.&lastkey.;
-		%end;
-		_F_&ds.=0;
-		_F_&ds.Get=0;
-		if &GETSTART. le datepart(&gdate.) then do;
-			_F_&ds.Get=1;
-			if &INFOSTART. le datepart(&date.) then _F_&ds.=1;
-		end;
-	run;
-	proc means data=&ds.first noprint;
-		class stoporgcode;
-		var _F_&ds.;
-		output out=Sum&ds.first(rename=(_freq_=SumAll&ds.))
-			sum(_F_&ds. _F_&ds.Get)=Sum&ds. Sum&ds.Get;
-	run;
-	proc sort data=Sum&ds.first;
-		by stoporgcode;
-	run;
-%mend TMonth;
+
+/*%ChkFile(D:\数据\&STAT_OP.);*/
+/*LIBNAME SSS "D:\数据\&STAT_OP.";*/
+/*OPTIONS NOXWAIT MPRINT MLOGIC COMPRESS=YES;*/
+options compress=yes nomprint nomlogic noxwait;
+/*libname nfcs "C:\Users\linan\Documents\工作\NFCS库中数据\201602";*/
+
 /*贷款申请信息*/
-%TMonth(ds=apply,date=ddate,keyvars=stoporgcode sapplycode,sortvars=ddate dgetdate);
-%TMonth(ds=loan,date=dbillingdate,keyvars=stoporgcode iloanid,sortvars=dbillingdate dgetdate);
-%TMonth(ds=person,date=dgetdate,keyvars=stoporgcode ipersonid,sortvars=dgetdate);
-%TMonth(ds=spec,date=DOCCURDATE,keyvars=stoporgcode saccount,sortvars=DOCCURDATE dgetdate);
-%TMonth(ds=record,date=dcreatetime,keyvars=stoporgcode dcreatetime,gdate=dcreatetime,first=0);
-%TMonth(ds=GetRecord,date=dcreatetime,keyvars=stoporgcode dcreatetime,gdate=dcreatetime,first=0);
-/*最近查询*/
-%sortds(ds=record,vars=stoporgcode dcreatetime);
-data RecordLast;
-	set record;
-	by stoporgcode dcreatetime;
-	if last.stoporgcode;
-	keep stoporgcode dcreatetime;
-run;
-/*最近报数*/
-%sortds(ds=msg,vars=stoporgcode duploadtime);
-data MsgLast;
-	set msg;
-	by stoporgcode duploadtime;
-	if last.stoporgcode;
-	keep stoporgcode duploadtime;
-run;
-/*查询权限*/
-%sortds(ds=orgplate,vars=stoporgcode iplate);
-data PlateFirst;
-	set orgplate;
-	by stoporgcode iplate;
-	if first.stoporgcode;
-	keep stoporgcode iplate;
-run;
-/*查询量限额*/
-data RecordLimit;
-	set org;
-	if SPARENT eq '';
-	if slevel eq '1';
-	keep stoporgcode ISEARCHLIMIT;
-run;
-%sortds(ds=RecordLimit,vars=stoporgcode);
-/*结果合并*/
-data Summary;
-	merge SumApplyFirst SumLoanFirst SumPersonFirst SumSpecFirst SumRecordFirst SumGetRecordFirst RecordLast 
-		MsgLast PlateFirst RecordLimit;
-	by stoporgcode;
-	array all(4) SumAllApply SumAllPerson SumAllLoan SumAllSpec;
-	array get(4) SumApplyGet SumPersonGet SumLoanGet SumSpecGet;
-	array last(4) SumLastApply SumLastPerson SumLastLoan SumLastSpec;
-	array PCT(4) PCTApply PCTPerson PCTLoan PCTSpec; 
-	do i=1 to 4;
-		last(i)=all(i)-get(i);
-		PCT(i)=get(i)/last(i);
-	end;
-	TGetPCT=SumGetRecord/SumRecord;
-run;
-proc datasets lib=work noprint;
-	modify Summary;
-	label 
-		SumApply="贷款申请信息-%sysfunc(month(&INFOSTART.))月及以后申请"
-		SumApplyGet="贷款申请信息-增长量"
-		SumAllApply="贷款申请信息-%sysfunc(month(&GETSTART.))月"
-		SumLastApply="贷款申请信息-%sysfunc(month(&INFOSTART.))月"
-		PCTApply="贷款申请信息-增长率"
-		SumPerson="个人基本信息-%sysfunc(month(&INFOSTART.))月及以后"
-		SumPersonGet="个人基本信息-增长量"
-		SumAllPerson="个人基本信息-%sysfunc(month(&GETSTART.))月"
-		SumLastPerson="个人基本信息-%sysfunc(month(&INFOSTART.))月"
-		PCTPerson="个人基本信息-增长率"
-		SumLoan="贷款业务信息-%sysfunc(month(&INFOSTART.))月及以后开户"
-		SumLoanGet="贷款业务信息-增长量"
-		SumAllLoan="贷款业务信息-%sysfunc(month(&GETSTART.))月"
-		SumLastLoan="贷款业务信息-%sysfunc(month(&INFOSTART.))月"
-		PCTLoan="贷款业务信息-增长率"
-		SumSpec="特殊交易信息-%sysfunc(month(&INFOSTART.))月及以后发生"
-		SumSpecGet="特殊交易信息-增长量"
-		SumAllSpec="特殊交易信息-%sysfunc(month(&GETSTART.))月"
-		SumLastSpec="特殊交易信息-%sysfunc(month(&INFOSTART.))月"
-		PCTSpec="特殊交易信息-增长率"
-		SumRecord="%sysfunc(month(&INFOSTART.))月查询量"
-		SumRecordGet="%sysfunc(month(&INFOSTART.))月查得量"
-		SumAllRecord="截止%sysfunc(month(&INFOSTART.))月查询量"
-		TGetPCT="%sysfunc(month(&INFOSTART.))月查得率"
-	;
-quit;
 PROC SQL;
 	CREATE TABLE SQ AS SELECT
 		sorgcode LABEL="机构代码"

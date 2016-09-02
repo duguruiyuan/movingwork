@@ -2,7 +2,7 @@ libname crmlocal "D:\数据\crm1\201602";
 
 /*外部人工导入机构简称*/
 PROC IMPORT OUT= WORK.shortname 
-DATAFILE= "E:\林佳宁\code\数据质量\机构号及机构简称整理0524.xlsx" 
+DATAFILE= "E:\林佳宁\code\数据质量\机构号及机构简称整理060902.xlsx" 
 DBMS=EXCEL REPLACE;
 RANGE="Sheet1$"; 
 GETNAMES=NO;
@@ -49,3 +49,6 @@ proc sql;
 	order by EXECUTE_START_DATE
 ;
 quit;
+data aa;
+	set crm1.T_contract_order;
+run;
